@@ -26,23 +26,23 @@
 package chat.dim.network;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import chat.dim.client.Amanuensis;
 import chat.dim.client.Conversation;
 import chat.dim.client.Facebook;
-import chat.dim.client.Messanger;
-import chat.dim.database.GroupTable;
-import chat.dim.database.SocialNetworkDatabase;
+import chat.dim.client.Messenger;
 import chat.dim.dkd.Content;
 import chat.dim.dkd.InstantMessage;
 import chat.dim.dkd.ReliableMessage;
 import chat.dim.format.JSON;
-import chat.dim.mkm.LocalUser;
 import chat.dim.mkm.ID;
+import chat.dim.mkm.LocalUser;
 import chat.dim.mkm.Meta;
 import chat.dim.mkm.Profile;
+import chat.dim.model.AccountDatabase;
 import chat.dim.protocol.Command;
 import chat.dim.protocol.HistoryCommand;
 import chat.dim.protocol.command.HandshakeCommand;
@@ -64,22 +64,42 @@ public class Terminal implements StationDelegate {
         return "zh-CN";
     }
 
+    public LocalUser getCurrentUser() {
+        return connection == null ? null : connection.currentUser;
+    }
+
+    public List<LocalUser> allUsers() {
+        List<LocalUser> users = new ArrayList<>();
+        Facebook facebook = Facebook.getInstance();
+        AccountDatabase userDB = AccountDatabase.getInstance();
+        List<ID> list = userDB.allUsers();
+        LocalUser user;
+        for (ID item : list) {
+            user = (LocalUser) facebook.getUser(item);
+            if (user == null) {
+                throw new NullPointerException("failed to get local user: " + item);
+            }
+            users.add(user);
+        }
+        return users;
+    }
+
     public boolean login() {
         if (connection == null || connection.server.getStatus() != StarStatus.Connected) {
             // not connect yet
             return false;
         }
-        LocalUser user = SocialNetworkDatabase.getInstance().getCurrentUser();
+        LocalUser user = AccountDatabase.getInstance().getCurrentUser();
         if (user == null) {
             // user not found
             return false;
-        } else if (user.equals(connection.server.currentUser)) {
+        } else if (user.equals(connection.currentUser)) {
             // user not change
             return true;
         }
 
         // switch user,session and handshake again
-        connection.server.currentUser = null;
+        connection.currentUser = null;
         connection.session = null;
         connection.handshake(null);
         return true;
@@ -112,8 +132,7 @@ public class Terminal implements StationDelegate {
             throw new IllegalArgumentException("meta error: " + meta);
         }
         // got new meta
-        SocialNetworkDatabase userDB = SocialNetworkDatabase.getInstance();
-        userDB.saveMeta(meta, identifier);
+        AccountDatabase.getInstance().saveMeta(meta, identifier);
     }
 
     public void processProfileCommand(ProfileCommand cmd) {
@@ -156,8 +175,10 @@ public class Terminal implements StationDelegate {
             return;
         }
 
-        // 2. check sender
         Facebook facebook = Facebook.getInstance();
+        AccountDatabase userDB = AccountDatabase.getInstance();
+
+        // 2. check sender
         ID sender = facebook.getID(rMsg.envelope.sender);
         Meta meta = facebook.getMeta(sender);
         if (meta == null) {
@@ -174,12 +195,12 @@ public class Terminal implements StationDelegate {
 
         // 3. check receiver
         ID receiver = facebook.getID(rMsg.envelope.receiver);
-        List<ID> users = SocialNetworkDatabase.getInstance().allUsers();
+        List<ID> users = userDB.allUsers();
         LocalUser user = null;
         if (receiver.getType().isGroup()) {
             // group message, check group membership
             for (ID item : users) {
-                if (GroupTable.existsMember(item, receiver)) {
+                if (facebook.existsMember(item, receiver)) {
                     // got group message for this user
                     user = (LocalUser) facebook.getUser(item);
                     break;
@@ -204,7 +225,7 @@ public class Terminal implements StationDelegate {
         }
 
         // 4. trans to instant message
-        InstantMessage iMsg = Messanger.getInstance().verifyAndDecryptMessage(rMsg);
+        InstantMessage iMsg = Messenger.getInstance().verifyAndDecryptMessage(rMsg);
         if (iMsg == null) {
             // failed to verify/decrypt message
             return;
@@ -263,6 +284,22 @@ public class Terminal implements StationDelegate {
             return;
         }
         */
+
+        // check meta for new group ID
+        Object group = iMsg.getGroup();
+        if (group != null) {
+            ID gid = facebook.getID(group);
+            if (!gid.isBroadcast()) {
+                // check meta
+                meta = facebook.getMeta(gid);
+                if (meta == null) {
+                    // NOTICE: if meta for group not found,
+                    //         the client will query it automatically
+                    // TODO: insert the message to a temporary queue to waiting meta
+                    return;
+                }
+            }
+        }
 
         // normal message, let the clerk to deliver it
         Amanuensis clerk = Amanuensis.getInstance();

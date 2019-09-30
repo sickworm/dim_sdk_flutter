@@ -23,48 +23,15 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.database;
+package chat.dim.utils;
 
-import java.io.IOException;
+public class Log {
 
-import chat.dim.mkm.ID;
-import chat.dim.mkm.Meta;
-
-class MetaTable extends ExternalStorage {
-
-    // "/sdcard/chat.dim.sechat/mkm/{address}/meta.js"
-
-    private static String getMetaFilePath(ID entity) {
-        return root + "/mkm/" + entity.address + "/meta.js";
+    public static void info(String msg) {
+        System.out.println(msg);
     }
 
-    private Meta loadMeta(ID entity) {
-        // load from JsON file
-        String path = getMetaFilePath(entity);
-        try {
-            Object dict = readJSON(path);
-            return Meta.getInstance(dict);
-        } catch (IOException | ClassNotFoundException e) {
-            //e.printStackTrace();
-            return null;
-        }
-    }
-
-    boolean saveMeta(Meta meta, ID entity) {
-        if (!meta.matches(entity)) {
-            return false;
-        }
-        // save into JsON file
-        String path = getMetaFilePath(entity);
-        try {
-            return writeJSON(meta, path);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    Meta getMeta(ID entity) {
-        return loadMeta(entity);
+    public static void error(String msg) {
+        System.out.println("ERROR: " + msg);
     }
 }

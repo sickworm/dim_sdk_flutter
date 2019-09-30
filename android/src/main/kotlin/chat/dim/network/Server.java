@@ -30,35 +30,33 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import chat.dim.client.Messanger;
+import chat.dim.client.Messenger;
 import chat.dim.core.CompletionHandler;
 import chat.dim.core.TransceiverDelegate;
 import chat.dim.crypto.Digest;
 import chat.dim.dkd.InstantMessage;
 import chat.dim.format.Base64;
-import chat.dim.mkm.LocalUser;
 import chat.dim.mkm.ID;
 import chat.dim.protocol.file.FileContent;
 import chat.dim.stargate.Star;
 import chat.dim.stargate.StarDelegate;
 import chat.dim.stargate.StarStatus;
 import chat.dim.stargate.simplegate.Fence;
+import chat.dim.utils.Log;
 
 public class Server extends Station implements Runnable, TransceiverDelegate, StarDelegate {
-
-    LocalUser currentUser = null;
 
     ServerStateMachine fsm = new ServerStateMachine();
     Star star;
 
     public Server(ID identifier) {
         super(identifier);
-        Messanger.getInstance().delegate = this;
+        Messenger.getInstance().delegate = this;
     }
 
     public Server(ID identifier, String host, int port) {
         super(identifier, host, port);
-        Messanger.getInstance().delegate = this;
+        Messenger.getInstance().delegate = this;
     }
 
     public Server(Map<String, Object> dictionary) {
@@ -184,7 +182,7 @@ public class Server extends Station implements Runnable, TransceiverDelegate, St
 
     @Override
     public void onConnectionStatusChanged(StarStatus status, Star star) {
-        System.out.println("status changed: " + status);
+        Log.info("status changed: " + status);
         fsm.tick();
     }
 

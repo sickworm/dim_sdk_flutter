@@ -25,25 +25,21 @@
  */
 package chat.dim.client;
 
-import chat.dim.group.Chatroom;
-import chat.dim.group.Polylogue;
-
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import chat.dim.core.Barrack;
 import chat.dim.crypto.PrivateKey;
-import chat.dim.mkm.EntityDataSource;
-import chat.dim.mkm.GroupDataSource;
+import chat.dim.group.Chatroom;
+import chat.dim.group.Polylogue;
+import chat.dim.mkm.Address;
+import chat.dim.mkm.Group;
 import chat.dim.mkm.ID;
+import chat.dim.mkm.LocalUser;
 import chat.dim.mkm.Meta;
 import chat.dim.mkm.NetworkType;
 import chat.dim.mkm.Profile;
 import chat.dim.mkm.User;
-import chat.dim.mkm.Group;
-import chat.dim.mkm.LocalUser;
-import chat.dim.mkm.UserDataSource;
 import chat.dim.network.Station;
 
 public class Facebook extends Barrack {
@@ -53,57 +49,74 @@ public class Facebook extends Barrack {
         super();
     }
 
-    // memory caches
-    private Map<ID, Profile>    profileMap = new HashMap<>();
+    public SocialNetworkDataSource database = null;
 
-    // delegates
-    public EntityDataSource entityDataSource = null;
-    public UserDataSource userDataSource   = null;
-    public GroupDataSource groupDataSource  = null;
+    //---- Private Key
 
-    public int reduceMemory() {
-        int finger = 0;
-        finger = thanos(profileMap, finger);
-        return finger + super.reduceMemory();
+    public boolean saveProvateKey(PrivateKey privateKey, ID identifier) {
+        return database.savePrivateKey(privateKey, identifier);
+    }
+
+    //---- Meta
+
+    public boolean saveMeta(Meta meta, ID entity) {
+        return database.saveMeta(meta, entity);
     }
 
     //---- Profile
 
-    protected boolean cacheProfile(Profile profile) {
-        if (!verifyProfile(profile)) {
-            return false;
-        }
-        profileMap.put(profile.identifier, profile);
-        return true;
+    public boolean saveProfile(Profile profile) {
+        return database.saveProfile(profile);
     }
 
-    private boolean verifyProfile(Profile profile) {
-        if (profile == null) {
-            return false;
-        } else if (profile.isValid()) {
-            return true;
+    public boolean verifyProfile(Profile profile) {
+        return database.verifyProfile(profile);
+    }
+
+    public String getNickname(ID identifier) {
+        assert identifier.getType().isUser();
+        User user = getUser(identifier);
+        return user == null ? null : user.getName();
+    }
+
+    public ID getID(Address address) {
+        ID identifier = new ID(null, address);
+        Meta meta = database.getMeta(identifier);
+        if (meta == null) {
+            // failed to get meta for this ID
+            return null;
         }
-        ID identifier = profile.identifier;
-        assert identifier.isValid();
-        NetworkType type = identifier.getType();
-        Meta meta = null;
-        if (type.isUser()) {
-            // verify with user's meta.key
-            meta = getMeta(identifier);
-        } else if (type.isGroup()) {
-            // verify with group owner's meta.key
-            Group group = getGroup(identifier);
-            if (group != null) {
-                meta = getMeta(group.getOwner());
-            }
+        String seed = meta.seed;
+        if (seed == null) {
+            return identifier;
         }
-        return meta != null && profile.verify(meta.key);
+        identifier = new ID(seed, address);
+        cacheID(identifier);
+        return identifier;
     }
 
     //-------- SocialNetworkDataSource
 
     @Override
+    public ID getID(Object string) {
+        if (string == null) {
+            return null;
+        } else if (string instanceof ID) {
+            return (ID) string;
+        }
+        assert string instanceof String;
+        // try ANS record
+        ID identifier = database.ansRecord((String) string);
+        if (identifier != null) {
+            return identifier;
+        }
+        // get from barrack
+        return super.getID(string);
+    }
+
+    @Override
     public User getUser(ID identifier) {
+        // get from barrack cache
         User user = super.getUser(identifier);
         if (user != null) {
             return user;
@@ -127,12 +140,14 @@ public class Facebook extends Barrack {
         } else {
             throw new UnsupportedOperationException("unsupported user type: " + type);
         }
+        // cache it in barrack
         cacheUser(user);
         return user;
     }
 
     @Override
     public Group getGroup(ID identifier) {
+        // get from barrack cache
         Group group = super.getGroup(identifier);
         if (group != null) {
             return group;
@@ -150,6 +165,7 @@ public class Facebook extends Barrack {
             group = new Chatroom(identifier);
         }
         assert group != null;
+        // cache it in barrack
         cacheGroup(group);
         return group;
     }
@@ -162,7 +178,7 @@ public class Facebook extends Barrack {
         if (meta != null) {
             return meta;
         }
-        meta = entityDataSource.getMeta(entity);
+        meta = database.getMeta(entity);
         if (meta != null && cacheMeta(meta, entity)) {
             return meta;
         }
@@ -171,42 +187,48 @@ public class Facebook extends Barrack {
 
     @Override
     public Profile getProfile(ID entity) {
-        Profile tai = entityDataSource.getProfile(entity);
-        if (tai != null && cacheProfile(tai)) {
-            return tai;
-        }
-        // profile error? let the subclass to process it
-        return tai;
+        return database.getProfile(entity);
     }
 
     //-------- UserDataSource
 
     @Override
     public PrivateKey getPrivateKeyForSignature(ID user) {
-        return userDataSource.getPrivateKeyForSignature(user);
+        return database.getPrivateKeyForSignature(user);
     }
 
     @Override
     public List<PrivateKey> getPrivateKeysForDecryption(ID user) {
-        return userDataSource.getPrivateKeysForDecryption(user);
+        return database.getPrivateKeysForDecryption(user);
     }
 
     @Override
     public List<ID> getContacts(ID user) {
-        return userDataSource.getContacts(user);
+        return database.getContacts(user);
     }
 
     //-------- GroupDataSource
 
     @Override
     public ID getFounder(ID group) {
-        ID founder = groupDataSource.getFounder(group);
+        if (group == ID.EVERYONE) {
+            // Consensus: the founder of group 'everyone@everywhere'
+            //            'Albert Moky'
+            return getID("founder");
+        }
+        if (group.address == Address.EVERYWHERE) {
+            // DISCUSS: who should be the founder of group 'xxx@everywhere'?
+            //          'anyone@anywhere', or 'xxx.founder@anywhere'
+            return getID("owner");
+        }
+        // get from database
+        ID founder = database.getFounder(group);
         if (founder != null) {
             return founder;
         }
-        // check each member's public key with group meta
+        // check each member's public key with group's meta.key
         Meta gMeta = getMeta(group);
-        List<ID> members = groupDataSource.getMembers(group);
+        List<ID> members = database.getMembers(group);
         if (gMeta == null || members == null) {
             //throw new NullPointerException("failed to get group info: " + gMeta + ", " + members);
             return null;
@@ -227,11 +249,49 @@ public class Facebook extends Barrack {
 
     @Override
     public ID getOwner(ID group) {
-        return groupDataSource.getOwner(group);
+        if (group == ID.EVERYONE) {
+            // Consensus: the owner of group 'everyone@everywhere'
+            //            'anyone@anywhere'
+            return ID.ANYONE;
+        }
+        if (group.address == Address.EVERYWHERE) {
+            // DISCUSS: who should be the owner of group 'xxx@everywhere'?
+            //          'anyone@anywhere', or 'xxx.owner@anywhere'
+            return ID.ANYONE;
+        }
+        // get from database
+        ID owner = database.getOwner(group);
+        if (owner != null) {
+            return owner;
+        }
+        if (group.getType().value == NetworkType.Polylogue.value) {
+            // Polylogue's owner is the founder
+            return getFounder(group);
+        }
+        return null;
     }
 
     @Override
     public List<ID> getMembers(ID group) {
-        return groupDataSource.getMembers(group);
+        if (group == ID.EVERYONE) {
+            // Consensus: the member of group 'everyone@everywhere'
+            //            'anyone@anywhere'
+            List<ID> members = new ArrayList<>();
+            members.add(ID.ANYONE);
+            return members;
+        }
+        if (group.address == Address.EVERYWHERE) {
+            // DISCUSS: who should be the member of group 'xxx@everywhere'?
+            //          'anyone@anywhere', or 'xxx@anywhere', or 'xxx.member@anywhere'
+            List<ID> members = new ArrayList<>();
+            members.add(new ID(group.name, Address.ANYWHERE));
+            return members;
+        }
+        // get from database
+        return database.getMembers(group);
+    }
+
+    public boolean existsMember(ID member, ID group) {
+        return database.existsMember(member, group);
     }
 }

@@ -28,8 +28,8 @@ package chat.dim.client;
 import java.util.List;
 
 import chat.dim.dkd.InstantMessage;
-import chat.dim.mkm.Group;
 import chat.dim.mkm.Entity;
+import chat.dim.mkm.Group;
 import chat.dim.mkm.ID;
 import chat.dim.mkm.NetworkType;
 

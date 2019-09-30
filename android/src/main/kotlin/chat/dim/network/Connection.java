@@ -1,28 +1,55 @@
+/* license: https://mit-license.org
+ * ==============================================================================
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Albert Moky
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * ==============================================================================
+ */
 package chat.dim.network;
 
 import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
 
 import chat.dim.client.Facebook;
-import chat.dim.client.Messanger;
+import chat.dim.client.Messenger;
 import chat.dim.core.Callback;
-import chat.dim.database.SocialNetworkDatabase;
 import chat.dim.dkd.Content;
 import chat.dim.dkd.InstantMessage;
 import chat.dim.dkd.ReliableMessage;
 import chat.dim.format.JSON;
-import chat.dim.mkm.LocalUser;
 import chat.dim.mkm.ID;
+import chat.dim.mkm.LocalUser;
 import chat.dim.mkm.Meta;
 import chat.dim.mkm.Profile;
+import chat.dim.model.AccountDatabase;
 import chat.dim.protocol.Command;
 import chat.dim.protocol.command.HandshakeCommand;
 import chat.dim.protocol.command.MetaCommand;
 import chat.dim.protocol.command.ProfileCommand;
 import chat.dim.stargate.StarStatus;
+import chat.dim.utils.Log;
 
 public class Connection {
 
+    LocalUser currentUser = null;
     String session = null;
     public final Server server;
 
@@ -39,8 +66,7 @@ public class Connection {
      * @return InstantMessage been sent
      */
     public InstantMessage sendContent(Content content, ID receiver) {
-        LocalUser user = server.currentUser;
-        if (user == null) {
+        if (currentUser == null) {
             // TODO: save the message content in waiting queue
             return null;
         }
@@ -51,7 +77,7 @@ public class Connection {
         }
 
         // make instant message
-        InstantMessage iMsg = new InstantMessage(content, user.identifier, receiver);
+        InstantMessage iMsg = new InstantMessage(content, currentUser.identifier, receiver);
         // callback
         Callback callback = new Callback() {
             @Override
@@ -69,13 +95,10 @@ public class Connection {
             }
         };
         // send out
-        try {
-            if (Messanger.getInstance().sendMessage(iMsg, callback, true)) {
-                return iMsg;
-            }
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
+        if (Messenger.getInstance().sendMessage(iMsg, callback, true)) {
+            return iMsg;
         }
+        // error
         return null;
     }
 
@@ -102,7 +125,7 @@ public class Connection {
         if (server.star == null || server.star.getStatus() != StarStatus.Connected) {
             // FIXME: sometimes the connection will be lost while handshaking
         }
-        LocalUser user = SocialNetworkDatabase.getInstance().getCurrentUser();
+        LocalUser user = AccountDatabase.getInstance().getCurrentUser();
         if (newSession != null) {
             session = newSession;
         }
@@ -110,12 +133,7 @@ public class Connection {
         // create handshake command
         HandshakeCommand cmd = new HandshakeCommand(session);
         InstantMessage iMsg = new InstantMessage(cmd, user.identifier, server.identifier);
-        ReliableMessage rMsg = null;
-        try {
-            rMsg = Messanger.getInstance().encryptAndSignMessage(iMsg);
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
-        }
+        ReliableMessage rMsg = Messenger.getInstance().encryptAndSignMessage(iMsg);
         if (rMsg == null) {
             throw new NullPointerException("failed to encrypt and sign message: " + iMsg);
         }
@@ -132,13 +150,15 @@ public class Connection {
         // TODO: check FSM state == 'Handshaking'
 
         if (success) {
-            LocalUser user = SocialNetworkDatabase.getInstance().getCurrentUser();
-            server.currentUser = user;
+            LocalUser user = AccountDatabase.getInstance().getCurrentUser();
+            currentUser = user;
+            Log.info("handshake accepted for user: " + user);
             // broadcast profile to DIM network
             postProfile(user.getProfile());
         } else {
             // new session key from station
             session = newSession;
+            Log.info("handshake again with session: " + newSession);
         }
     }
 

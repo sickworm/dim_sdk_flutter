@@ -23,17 +23,51 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.client;
+package chat.dim.database;
 
-import chat.dim.core.Transceiver;
+import java.util.List;
+import java.util.Map;
 
-public class Messanger extends Transceiver {
-    private static final Messanger ourInstance = new Messanger();
-    public static Messanger getInstance() { return ourInstance; }
-    private Messanger()  {
-        super();
+import chat.dim.client.NetworkDataSource;
+import chat.dim.mkm.ID;
 
-        barrack = Facebook.getInstance();
-        keyCache = KeyStore.getInstance();
+public class NetworkDatabase implements NetworkDataSource {
+
+    private ProviderTable providerTable = new ProviderTable();
+    private StationTable stationTable = new StationTable();
+
+    @Override
+    public List<String> allProviders() {
+        return providerTable.allProviders();
+    }
+
+    @Override
+    public Map<String, Object> getProviderConfig(ID sp) {
+        Map config = providerTable.getProviderConfig(sp);
+        Object stations = config.get("stations");
+        if (stations == null) {
+            stations = allStations(sp);
+            if (stations != null) {
+                config.put("stations", stations);
+            }
+        }
+        return config;
+    }
+
+    @Override
+    public boolean saveProviders(List<String> providers) {
+        return providerTable.saveProviders(providers);
+    }
+
+    //-------- Station
+
+    @Override
+    public List<Map<String, Object>> allStations(ID sp) {
+        return stationTable.allStations(sp);
+    }
+
+    @Override
+    public boolean saveStations(List<Map<String, Object>> stations, ID sp) {
+        return stationTable.saveStations(stations, sp);
     }
 }

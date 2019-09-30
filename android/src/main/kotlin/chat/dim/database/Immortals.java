@@ -1,3 +1,28 @@
+/* license: https://mit-license.org
+ * ==============================================================================
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Albert Moky
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * ==============================================================================
+ */
 package chat.dim.database;
 
 import java.io.IOException;
@@ -11,12 +36,13 @@ import chat.dim.crypto.PrivateKey;
 import chat.dim.crypto.impl.PrivateKeyImpl;
 import chat.dim.filesys.Resource;
 import chat.dim.format.Base64;
-import chat.dim.format.BaseCoder;
 import chat.dim.format.JSON;
-import chat.dim.mkm.UserDataSource;
+import chat.dim.mkm.Address;
 import chat.dim.mkm.ID;
 import chat.dim.mkm.Meta;
 import chat.dim.mkm.Profile;
+import chat.dim.mkm.UserDataSource;
+import chat.dim.utils.Log;
 
 public class Immortals implements UserDataSource {
     private static final Immortals ourInstance = new Immortals();
@@ -24,9 +50,9 @@ public class Immortals implements UserDataSource {
     private Immortals() {
     }
 
-    private final Map<ID, Meta>    metaMap       = new HashMap<>();
-    private Map<ID, PrivateKey>    privateKeyMap = new HashMap<>();
-    private final Map<ID, Profile> profileMap    = new HashMap<>();
+    private final Map<Address, Meta>    metaMap       = new HashMap<>();
+    private Map<Address, PrivateKey>    privateKeyMap = new HashMap<>();
+    private final Map<Address, Profile> profileMap    = new HashMap<>();
 
     @SuppressWarnings("unchecked")
     private Profile getProfile(Map dictionary, ID identifier, PrivateKey privateKey) {
@@ -80,7 +106,7 @@ public class Immortals implements UserDataSource {
         }
         String jsonString = new String(file.getData(), Charset.forName("UTF-8"));
         Map<String, Object> dict = (Map<String, Object>) JSON.decode(jsonString);
-        System.out.println(filename + ":" + dict);
+        Log.info(filename + ":" + dict);
         // ID
         ID identifier = ID.getInstance(dict.get("ID"));
         assert identifier != null;
@@ -88,7 +114,7 @@ public class Immortals implements UserDataSource {
         Meta meta = Meta.getInstance(dict.get("meta"));
         assert meta != null;
         if (meta.matches(identifier)) {
-            metaMap.put(identifier, meta);
+            metaMap.put(identifier.address, meta);
         } else {
             throw new IllegalArgumentException("meta not match ID:" + identifier + ", " + meta);
         }
@@ -97,14 +123,14 @@ public class Immortals implements UserDataSource {
         assert privateKey != null;
         if (meta.key.matches(privateKey)) {
             // TODO: store private key into keychain
-            privateKeyMap.put(identifier, privateKey);
+            privateKeyMap.put(identifier.address, privateKey);
         } else {
             throw new IllegalArgumentException("private key not match meta public key:" + privateKey);
         }
         // profile
         Map profile = (Map) dict.get("profile");
         if (profile != null) {
-            profileMap.put(identifier, getProfile(profile, identifier, privateKey));
+            profileMap.put(identifier.address, getProfile(profile, identifier, privateKey));
         }
     }
 
@@ -112,24 +138,24 @@ public class Immortals implements UserDataSource {
 
     @Override
     public Meta getMeta(ID identifier) {
-        return metaMap.get(identifier);
+        return metaMap.get(identifier.address);
     }
 
     @Override
     public Profile getProfile(ID identifier) {
-        return profileMap.get(identifier);
+        return profileMap.get(identifier.address);
     }
 
     //---- UserDataSource
 
     @Override
     public PrivateKey getPrivateKeyForSignature(ID user) {
-        return privateKeyMap.get(user);
+        return privateKeyMap.get(user.address);
     }
 
     @Override
     public List<PrivateKey> getPrivateKeysForDecryption(ID user) {
-        PrivateKey privateKey = privateKeyMap.get(user);
+        PrivateKey privateKey = privateKeyMap.get(user.address);
         List<PrivateKey> list = new ArrayList<>();
         list.add(privateKey);
         return list;
@@ -141,19 +167,6 @@ public class Immortals implements UserDataSource {
     }
 
     static {
-        // mkm.Base64
-        Base64.coder = new BaseCoder() {
-            @Override
-            public String encode(byte[] data) {
-                return android.util.Base64.encodeToString(data, android.util.Base64.DEFAULT);
-            }
-
-            @Override
-            public byte[] decode(String string) {
-                return android.util.Base64.decode(string, android.util.Base64.DEFAULT);
-            }
-        };
-
         // FIXME: test
 
         // load data

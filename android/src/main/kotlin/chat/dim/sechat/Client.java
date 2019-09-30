@@ -1,15 +1,19 @@
 package chat.dim.sechat;
 
+import android.os.Environment;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import chat.dim.client.Facebook;
-import chat.dim.database.SocialNetworkDatabase;
-import chat.dim.database.StationTable;
-import chat.dim.mkm.LocalUser;
+import chat.dim.database.ExternalStorage;
+import chat.dim.format.Base64;
+import chat.dim.format.BaseCoder;
 import chat.dim.mkm.ID;
+import chat.dim.mkm.LocalUser;
+import chat.dim.model.NetworkConfig;
 import chat.dim.network.Connection;
 import chat.dim.network.Server;
 import chat.dim.network.ServiceProvider;
@@ -17,14 +21,30 @@ import chat.dim.network.Terminal;
 import chat.dim.protocol.Command;
 
 public class Client extends Terminal {
+
+    static {
+        // mkm.Base64
+        Base64.coder = new BaseCoder() {
+            @Override
+            public String encode(byte[] data) {
+                return android.util.Base64.encodeToString(data, android.util.Base64.DEFAULT);
+            }
+
+            @Override
+            public byte[] decode(String string) {
+                return android.util.Base64.decode(string, android.util.Base64.DEFAULT);
+            }
+        };
+
+        String path = Environment.getExternalStorageDirectory().getPath();
+        ExternalStorage.root = path + "/chat.dim.sechat";
+    }
+
     private static final Client ourInstance = new Client();
     public static Client getInstance() { return ourInstance; }
     private Client() {
         super();
-        SocialNetworkDatabase.getInstance().reloadData();
     }
-
-    private final Facebook facebook = Facebook.getInstance();
 
     public String getDisplayName() {
         return "DIM!";
@@ -65,12 +85,13 @@ public class Client extends Terminal {
 
     @SuppressWarnings("unchecked")
     private void launchServiceProvider(Map<String, Object> spConfig) {
+        Facebook facebook = Facebook.getInstance();
         ID spID = facebook.getID(spConfig.get("ID"));
         ServiceProvider sp = new ServiceProvider(spID);
 
-        List<Map> stations = (List<Map>) spConfig.get("stations");
+        List<Map<String, Object>> stations = (List) spConfig.get("stations");
         if (stations == null) {
-            stations = StationTable.allStations(spID);
+            stations = NetworkConfig.getInstance().allStations(spID);
             assert stations != null;
         }
 
@@ -90,7 +111,7 @@ public class Client extends Terminal {
         //
         Map<String, Object> spConfig = (Map<String, Object>) options.get("SP");
         if (spConfig == null) {
-            spConfig = StationTable.getProviderConfig(ID.ANYONE);
+            spConfig = NetworkConfig.getInstance().getProviderConfig(ID.ANYONE);
         }
         launchServiceProvider(spConfig);
 
