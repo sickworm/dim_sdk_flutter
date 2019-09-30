@@ -3,7 +3,7 @@ package chat.dim.filesys;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class Resource implements java.lang.Readable {
+public class Resource implements Readable {
 
     private byte[] fileContent = null;
 

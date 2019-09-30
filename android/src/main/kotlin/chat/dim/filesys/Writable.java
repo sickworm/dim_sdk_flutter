@@ -27,7 +27,7 @@ package chat.dim.filesys;
 
 import java.io.IOException;
 
-public interface Writable extends java.lang.Readable {
+public interface Writable extends Readable {
 
     /**
      *  Set file content

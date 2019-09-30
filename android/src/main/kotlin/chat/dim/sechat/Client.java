@@ -10,7 +10,10 @@ import chat.dim.database.SocialNetworkDatabase;
 import chat.dim.database.StationTable;
 import chat.dim.mkm.LocalUser;
 import chat.dim.mkm.ID;
+import chat.dim.network.Connection;
+import chat.dim.network.Server;
 import chat.dim.network.ServiceProvider;
+import chat.dim.network.Terminal;
 import chat.dim.protocol.Command;
 
 public class Client extends Terminal {
