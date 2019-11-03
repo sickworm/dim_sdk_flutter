@@ -1,17 +1,6 @@
 import 'dart:async';
 
-enum ContentType { Text, Image, File }
-
-class Content {
-  final ContentType type;
-  final String data;
-
-  Content(this.type, this.data);
-
-  String toString() {
-    return 'Content: $type, $data';
-  }
-}
+import 'dim_data.dart';
 
 class ServerInfo {
   String name;
