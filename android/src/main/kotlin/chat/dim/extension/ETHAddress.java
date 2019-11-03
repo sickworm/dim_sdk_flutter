@@ -23,56 +23,56 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.extension;
 
-import java.util.Map;
+import chat.dim.mkm.Address;
+import chat.dim.mkm.NetworkType;
 
 /**
- *  Server
+ *  Address like Ethereum
+ *
+ *      data format: "0x0123456789ABCDEF"
+ *
+ *      algorithm:
+ *          digest  = keccak256(pub_key_data)
+ *          address = "0x" + hex_encode(digest)
+ *
+ *      checksum algorithm:
+ *          str1 = hex_encode(digest)
+ *          str2 = hex_encode(keccak256(str1))
+ *          if str2[i] >= '8',
+ *              str1[i] = uppercase(str1[i])
+ *          address = "0x" + str1
  */
-public interface Star {
+public final class ETHAddress extends Address {
+
+    public ETHAddress(String string) {
+        super(string);
+        // TODO: decode ETH address
+    }
+
+    @Override
+    public NetworkType getNetwork() {
+        // ETH address always be personal;
+        // If you want to create a group Address, use the default address format.
+        return NetworkType.Main;
+    }
+
+    @Override
+    public long getCode() {
+        // TODO: use the last 4 bytes of address
+        return 0;
+    }
 
     /**
-     *  Get connection status
+     *  Generate address with public key data
      *
-     * @return connection status
+     * @param key = key data
+     * @return Address object
      */
-    StarStatus getStatus();
-
-    /**
-     *  Connect to a server
-     *
-     * @param options - launch options
-     */
-    void launch(Map<String, Object> options);
-
-    /**
-     *  Disconnect from the server
-     */
-    void terminate();
-
-    /**
-     *  Paused
-     */
-    void enterBackground();
-
-    /**
-     *  Resumed
-     */
-    void enterForeground();
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     */
-    void send(byte[] payload);
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     * @param completionHandler - callback
-     */
-    void send(byte[] payload, StarDelegate completionHandler);
+    static ETHAddress generate(byte[] key) {
+        assert key != null;
+        // TODO: generate ETH address with public key data
+        return null;
+    }
 }

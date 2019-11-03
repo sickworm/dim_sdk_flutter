@@ -23,56 +23,23 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.extension;
 
 import java.util.Map;
 
-/**
- *  Server
- */
-public interface Star {
+import chat.dim.mkm.Address;
+import chat.dim.mkm.Meta;
+import chat.dim.mkm.NetworkType;
 
-    /**
-     *  Get connection status
-     *
-     * @return connection status
-     */
-    StarStatus getStatus();
+public final class ETHMeta extends Meta {
 
-    /**
-     *  Connect to a server
-     *
-     * @param options - launch options
-     */
-    void launch(Map<String, Object> options);
+    public ETHMeta(Map<String, Object> dictionary) throws NoSuchFieldException, ClassNotFoundException {
+        super(dictionary);
+    }
 
-    /**
-     *  Disconnect from the server
-     */
-    void terminate();
-
-    /**
-     *  Paused
-     */
-    void enterBackground();
-
-    /**
-     *  Resumed
-     */
-    void enterForeground();
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     */
-    void send(byte[] payload);
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     * @param completionHandler - callback
-     */
-    void send(byte[] payload, StarDelegate completionHandler);
+    @Override
+    public Address generateAddress(NetworkType network) {
+        assert (version & VersionETH) == VersionETH;
+        return ETHAddress.generate(key.getData());
+    }
 }

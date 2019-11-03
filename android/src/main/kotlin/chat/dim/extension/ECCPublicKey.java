@@ -23,25 +23,34 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.group;
+package chat.dim.extension;
 
-import chat.dim.mkm.Group;
-import chat.dim.mkm.ID;
+import java.util.Map;
 
-public class Polylogue extends Group {
+import chat.dim.crypto.impl.PublicKeyImpl;
 
-    public Polylogue(ID identifier) {
-        super(identifier);
+public final class ECCPublicKey extends PublicKeyImpl {
+
+    public ECCPublicKey(Map<String, Object> dictionary) {
+        super(dictionary);
+        // TODO: get key info from dictionary
     }
 
     @Override
-    public ID getOwner() {
-        // polylogue's owner is founder
-        ID owner = super.getOwner();
-        if (owner != null && owner.isValid()) {
-            //assert owner == getFounder();
-            return owner;
-        }
-        return getFounder();
+    public byte[] encrypt(byte[] plaintext) {
+        // TODO: encrypt plaintext to ciphertext
+        return new byte[0];
+    }
+
+    @Override
+    public boolean verify(byte[] data, byte[] signature) {
+        // TODO: verify data with signature
+        return false;
+    }
+
+    @Override
+    public byte[] getData() {
+        // TODO: get key data
+        return new byte[0];
     }
 }

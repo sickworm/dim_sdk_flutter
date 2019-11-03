@@ -23,33 +23,23 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.client;
+package chat.dim.utils;
 
-import java.util.Map;
+import java.util.List;
 
-import chat.dim.core.KeyCache;
-import chat.dim.crypto.SymmetricKey;
-import chat.dim.mkm.ID;
+public class StringUtils {
 
-public class KeyStore extends KeyCache {
-    private static final KeyStore ourInstance = new KeyStore();
-    public static KeyStore getInstance() { return ourInstance; }
-    private KeyStore() {
-        super();
-    }
-
-    @Override
-    public boolean saveKeys(Map keyMap) {
-        return false;
-    }
-
-    @Override
-    public Map loadKeys() {
-        return null;
-    }
-
-    @Override
-    public SymmetricKey reuseCipherKey(ID sender, ID receiver, SymmetricKey key) {
-        return super.reuseCipherKey(sender, receiver, key);
+    public static String join(List<String> array, String separator) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (String item : array) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(separator);
+            }
+            sb.append(item);
+        }
+        return sb.toString();
     }
 }

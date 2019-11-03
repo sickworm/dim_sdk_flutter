@@ -25,17 +25,44 @@
  */
 package chat.dim.network;
 
-import java.lang.ref.WeakReference;
-
 import chat.dim.fsm.Machine;
 import chat.dim.fsm.State;
 import chat.dim.fsm.Transition;
-import chat.dim.mkm.LocalUser;
-import chat.dim.model.AccountDatabase;
 import chat.dim.stargate.StarStatus;
 import chat.dim.utils.Log;
 
-class ServerStateMachine extends Machine {
+class ServerState extends State {
+
+    public final String name;
+
+    ServerState(String name) {
+        super();
+        this.name = name;
+    }
+
+    @Override
+    protected void onEnter(Machine machine) {
+        // do nothing
+        Log.info("onEnter: " + name + " state");
+    }
+
+    @Override
+    protected void onExit(Machine machine) {
+    }
+
+    @Override
+    protected void onPause(Machine machine) {
+    }
+
+    @Override
+    protected void onResume(Machine machine) {
+    }
+}
+
+/**
+ *  Server state machine
+ */
+class StateMachine extends Machine implements Runnable {
 
     static final String defaultState     = "default";
     static final String connectingState  = "connecting";
@@ -45,13 +72,11 @@ class ServerStateMachine extends Machine {
     static final String errorState       = "error";
     static final String stoppedState     = "stopped";
 
-    WeakReference<Connection> connection = null;
-
-    public ServerStateMachine() {
+    StateMachine() {
         this(defaultState);
     }
 
-    public ServerStateMachine(String defaultStateName) {
+    private StateMachine(String defaultStateName) {
         super(defaultStateName);
 
         // add states
@@ -61,58 +86,64 @@ class ServerStateMachine extends Machine {
         addState(handshakingState, getHandshakingState());
         addState(runningState, getRunningState());
         addState(errorState, getErrorState());
-        //addState(stoppedState, getStoppedState());
+        addState(stoppedState, getStoppedState());
     }
 
-    private Connection getConnection(Machine machine) {
-        ServerStateMachine ssm = (ServerStateMachine)machine;
-        return ssm.connection.get();
+    Server server = null;
+
+    //---- Auto running
+
+    private Thread thread = null;
+
+    public void start() {
+        super.start();
+
+        thread = new Thread(this);
+        thread.start();
     }
 
-    private Server getServer(Machine machine) {
-        return getConnection(machine).server;
+    public void stop() {
+        thread.interrupt();
+
+        super.stop();
     }
 
-    private LocalUser getUser(Machine machine) {
-        return getConnection(machine).currentUser;
-    }
-
-    abstract class ServerState extends State {
-
-        public final String name;
-
-        ServerState(String name) {
-            super();
-            this.name = name;
-        }
-
-        @Override
-        protected void onExit(Machine machine) {
-        }
-
-        @Override
-        protected void onPause(Machine machine) {
-        }
-
-        @Override
-        protected void onResume(Machine machine) {
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
+
+    @Override
+    public void run() {
+        while (!isStopped()) {
+            sleep(500);
+            tick();
+        }
+    }
+
+    private boolean isStopped() {
+        ServerState state = (ServerState) getCurrentState();
+        if (state == null) {
+            return false;
+        }
+        return state.name.equals(StateMachine.stoppedState);
+    }
+
+    //---- States
 
     private State getDefaultState() {
-        State state = new ServerState(defaultState) {
-            @Override
-            protected void onEnter(Machine machine) {
-                // do nothing
-                Log.info("onEnter: default state");
-            }
-        };
+        State state = new ServerState(defaultState);
 
         // target state: Connecting
         state.addTransition(new Transition(connectingState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                Server server = getServer(machine);
+                if (server == null || server.getCurrentUser() == null) {
+                    return false;
+                }
                 StarStatus status = server.getStatus();
                 return status == StarStatus.Connecting || status == StarStatus.Connected;
             }
@@ -122,19 +153,13 @@ class ServerStateMachine extends Machine {
     }
 
     private State getConnectingState() {
-        State state = new ServerState(connectingState) {
-            @Override
-            protected void onEnter(Machine machine) {
-                // do nothing
-                Log.info("onEnter: connecting state");
-            }
-        };
+        State state = new ServerState(connectingState);
 
         // target state: Connected
         state.addTransition(new Transition(connectedState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                Server server = getServer(machine);
+                assert server != null && server.getCurrentUser() != null;
                 StarStatus status = server.getStatus();
                 return status == StarStatus.Connected;
             }
@@ -144,7 +169,7 @@ class ServerStateMachine extends Machine {
         state.addTransition(new Transition(errorState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                Server server = getServer(machine);
+                assert server != null;
                 StarStatus status = server.getStatus();
                 return status == StarStatus.Error;
             }
@@ -154,20 +179,14 @@ class ServerStateMachine extends Machine {
     }
 
     private State getConnectedState() {
-        State state = new ServerState(connectedState) {
-            @Override
-            protected void onEnter(Machine machine) {
-                // do nothing
-                Log.info("onEnter: connected state");
-            }
-        };
+        State state = new ServerState(connectedState);
 
         // target state: Handshaking
         state.addTransition(new Transition(handshakingState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                LocalUser user = AccountDatabase.getInstance().getCurrentUser();
-                return user != null;
+                assert server != null;
+                return server.getCurrentUser() != null;
             }
         });
 
@@ -175,24 +194,16 @@ class ServerStateMachine extends Machine {
     }
 
     private State getHandshakingState() {
-        State state = new ServerState(handshakingState) {
-            @Override
-            protected void onEnter(Machine machine) {
-                // start handshake
-                Log.info("onEnter: handshaking state");
-                Connection connection = getConnection(machine);
-                connection.handshake(null);
-            }
-        };
+        State state = new ServerState(handshakingState);
 
         // target state: Running
         state.addTransition(new Transition(runningState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                // when user logout/changed, the server's current user will be clear,
-                // after handshake accepted with new session key, this will be set again,
-                // so if it's not empty, it means handshake accepted
-                return getUser(machine) != null;
+                assert server != null;
+                // when current user changed, the server will clear this session, so
+                // if it's set again, it means handshake accepted
+                return server.session != null;
             }
         });
 
@@ -200,7 +211,7 @@ class ServerStateMachine extends Machine {
         state.addTransition(new Transition(errorState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                Server server = getServer(machine);
+                assert server != null;
                 StarStatus status = server.getStatus();
                 return status != StarStatus.Connected;
             }
@@ -210,19 +221,13 @@ class ServerStateMachine extends Machine {
     }
 
     private State getRunningState() {
-        State state = new ServerState(runningState) {
-            @Override
-            protected void onEnter(Machine machine) {
-                // TODO: send all packages waiting
-                Log.info("onEnter: running state");
-            }
-        };
+        State state = new ServerState(runningState);
 
         // target state: Error
         state.addTransition(new Transition(errorState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                Server server = getServer(machine);
+                assert server != null;
                 StarStatus status = server.getStatus();
                 return status != StarStatus.Connected;
             }
@@ -232,8 +237,9 @@ class ServerStateMachine extends Machine {
         state.addTransition(new Transition(defaultState) {
             @Override
             protected boolean evaluate(Machine machine) {
+                assert server != null;
                 // user switched?
-                return getUser(machine) == null;
+                return server.session == null;
             }
         });
 
@@ -241,24 +247,24 @@ class ServerStateMachine extends Machine {
     }
 
     private State getErrorState() {
-        State state = new ServerState(errorState) {
-            @Override
-            protected void onEnter(Machine machine) {
-                // do nothing
-                Log.info("onEnter: error state");
-            }
-        };
+        State state = new ServerState(errorState);
 
         // target state: Default
         state.addTransition(new Transition(defaultState) {
             @Override
             protected boolean evaluate(Machine machine) {
-                Server server = getServer(machine);
+                assert server != null;
                 StarStatus status = server.getStatus();
                 return status != StarStatus.Error;
             }
         });
 
+        return state;
+    }
+
+    private State getStoppedState() {
+        State state = new ServerState(errorState);
+        // TODO: add transition
         return state;
     }
 }

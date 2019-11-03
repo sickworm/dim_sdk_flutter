@@ -25,38 +25,45 @@
  */
 package chat.dim.network;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import chat.dim.client.Messenger;
+import chat.dim.common.Messenger;
 import chat.dim.core.CompletionHandler;
 import chat.dim.core.TransceiverDelegate;
-import chat.dim.crypto.Digest;
 import chat.dim.dkd.InstantMessage;
-import chat.dim.format.Base64;
+import chat.dim.dkd.ReliableMessage;
+import chat.dim.format.JSON;
+import chat.dim.fsm.Machine;
+import chat.dim.fsm.State;
+import chat.dim.fsm.StateDelegate;
 import chat.dim.mkm.ID;
-import chat.dim.protocol.file.FileContent;
+import chat.dim.mkm.LocalUser;
+import chat.dim.protocol.FileContent;
+import chat.dim.protocol.HandshakeCommand;
 import chat.dim.stargate.Star;
 import chat.dim.stargate.StarDelegate;
 import chat.dim.stargate.StarStatus;
-import chat.dim.stargate.simplegate.Fence;
 import chat.dim.utils.Log;
 
-public class Server extends Station implements Runnable, TransceiverDelegate, StarDelegate {
+public class Server extends Station implements TransceiverDelegate, StarDelegate, StateDelegate {
 
-    ServerStateMachine fsm = new ServerStateMachine();
-    Star star;
+    private LocalUser currentUser = null;
+    String session = null;
 
-    public Server(ID identifier) {
-        super(identifier);
-        Messenger.getInstance().delegate = this;
-    }
+    final StateMachine fsm;
+
+    public Star star = null;
 
     public Server(ID identifier, String host, int port) {
         super(identifier, host, port);
-        Messenger.getInstance().delegate = this;
+        // connection state machine
+        fsm = new StateMachine();
+        fsm.server = this;
+        fsm.delegate = this;
     }
 
     public Server(Map<String, Object> dictionary) {
@@ -68,20 +75,91 @@ public class Server extends Station implements Runnable, TransceiverDelegate, St
         // CA
     }
 
-    public StarStatus getStatus() {
+    LocalUser getCurrentUser() {
+        return currentUser;
+    }
+
+    void setCurrentUser(LocalUser user) {
+        if (user.equals(currentUser)) {
+            return;
+        }
+        currentUser = user;
+        // switch state for re-login
+        session = null;
+    }
+
+    private ServerState getCurrentState() {
+        return (ServerState) fsm.getCurrentState();
+    }
+
+    StarStatus getStatus() {
         return star.getStatus();
     }
 
+    //---- urgent command for connection
+
+    void handshake(String newSession) {
+        // check FSM state == 'Handshaking'
+        ServerState state = getCurrentState();
+        if (!StateMachine.handshakingState.equals(state.name)) {
+            // FIXME: sometimes the connection state will be reset
+            return;
+        }
+        // check connection status == 'Connected'
+        if (getStatus() != StarStatus.Connected) {
+            // FIXME: sometimes the connection will be lost while handshaking
+            return;
+        }
+        if (newSession != null) {
+            session = newSession;
+        }
+        // create handshake command
+        HandshakeCommand cmd = new HandshakeCommand(session);
+        InstantMessage iMsg = new InstantMessage(cmd, currentUser.identifier, identifier);
+        Messenger messenger = Messenger.getInstance();
+        ReliableMessage rMsg = messenger.encryptAndSignMessage(iMsg);
+        if (rMsg == null) {
+            throw new NullPointerException("failed to encrypt and sign message: " + iMsg);
+        }
+        // first handshake?
+        if (cmd.state == HandshakeCommand.START) {
+            // [Meta protocol]
+            rMsg.setMeta(currentUser.getMeta());
+        }
+        // send out directly
+        String json = JSON.encode(rMsg);
+        byte[] data = json.getBytes(Charset.forName("UTF-8"));
+        star.send(data);
+    }
+
+    void handshakeAccepted(String newSession, boolean success) {
+        // check FSM state == 'Handshaking'
+        ServerState state = getCurrentState();
+        if (!state.name.equals(StateMachine.handshakingState)) {
+            // FIXME: sometimes the connection state will be reset
+            return;
+        }
+        if (success) {
+            Log.info("handshake accepted for user: " + currentUser);
+            session = newSession;
+            // TODO: broadcast profile to DIM network
+        } else {
+            // new session key from station
+            Log.info("handshake again with session: " + newSession);
+        }
+    }
+
+    //--------
+
     public void start(Map<String, Object> options) {
 
-        fsm.start();
+        Messenger messenger = Messenger.getInstance();
+        messenger.setDelegate(this);
 
-        star = new Fence(this);
-        //star = new Mars(this);
+        fsm.start();
         star.launch(options);
 
-        Thread thread = new Thread(this);
-        thread.start();
+        // TODO: let the subclass to create StarGate
     }
 
     public void end() {
@@ -99,89 +177,15 @@ public class Server extends Station implements Runnable, TransceiverDelegate, St
         fsm.resume();
     }
 
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void run() {
-
-        ServerStateMachine.ServerState state;
-        String name = null;
-        while (!ServerStateMachine.stoppedState.equals(name)) {
-            sleep(500);
-            fsm.tick();
-            state = (ServerStateMachine.ServerState) fsm.getCurrentState();
-            name = state.name;
-        }
-    }
-
-    //---- TransceiverDelegate
-
-    private List<PackageHandler> waitingList = new ArrayList<>();
-    private Map<String, PackageHandler> sendingTable = new HashMap<>();
-
-    class PackageHandler {
-        byte[] data;
-        CompletionHandler handler;
-
-        PackageHandler(byte[] data, CompletionHandler handler) {
-            super();
-            this.data = data;
-            this.handler = handler;
-        }
-    }
-    private String getPackageHandlerKey(byte[] data) {
-        byte[] hash = Digest.sha256(data);
-        return Base64.encode(hash);
-    }
-
-    @Override
-    public boolean sendPackage(byte[] data, CompletionHandler handler) {
-        PackageHandler wrapper = new PackageHandler(data, handler);
-
-        // TODO: check FSM.state == 'Running'
-
-        int res = star.send(data);
-
-        if (handler != null) {
-            String key = getPackageHandlerKey(data);
-            sendingTable.put(key, wrapper);
-        }
-
-        return res == 0;
-    }
-
-    @Override
-    public String uploadFileData(byte[] data, InstantMessage iMsg) {
-        ID sender = ID.getInstance(iMsg.envelope.sender);
-        FileContent content = (FileContent) iMsg.content;
-        String filename = content.getFilename();
-
-        // TODO: upload onto FTP server
-        return null;
-    }
-
-    @Override
-    public byte[] downloadFileData(String url, InstantMessage iMsg) {
-        // TODO: download from FTP server
-
-        return new byte[0];
-    }
-
     //-------- StarDelegate
 
     @Override
-    public int onReceive(byte[] responseData, Star star) {
+    public void onReceive(byte[] responseData, Star star) {
         delegate.didReceivePackage(responseData, this);
-        return 0;
     }
 
     @Override
-    public void onConnectionStatusChanged(StarStatus status, Star star) {
+    public void onStatusChanged(StarStatus status, Star star) {
         Log.info("status changed: " + status);
         fsm.tick();
     }
@@ -190,8 +194,8 @@ public class Server extends Station implements Runnable, TransceiverDelegate, St
     public void onFinishSend(byte[] requestData, Error error, Star star) {
         CompletionHandler handler = null;
 
-        String key = getPackageHandlerKey(requestData);
-        PackageHandler wrapper = sendingTable.get(key);
+        String key = RequestWrapper.getKey(requestData);
+        RequestWrapper wrapper = sendingTable.get(key);
         if (wrapper != null) {
             handler = wrapper.handler;
             sendingTable.remove(key);
@@ -212,5 +216,75 @@ public class Server extends Station implements Runnable, TransceiverDelegate, St
                 handler.onFailed(error);
             }
         }
+    }
+
+    //---- TransceiverDelegate
+
+    private List<RequestWrapper> waitingList = new ArrayList<>();
+    private Map<String, RequestWrapper> sendingTable = new HashMap<>();
+
+    @Override
+    public boolean sendPackage(byte[] data, CompletionHandler handler) {
+        RequestWrapper wrapper = new RequestWrapper(data, handler);
+
+        ServerState state = getCurrentState();
+        if (!state.name.equals(StateMachine.runningState)) {
+            waitingList.add(wrapper);
+            return true;
+        }
+
+        star.send(data);
+
+        if (handler != null) {
+            String key = RequestWrapper.getKey(data);
+            sendingTable.put(key, wrapper);
+        }
+
+        return true;
+    }
+
+    @Override
+    public String uploadFileData(byte[] data, InstantMessage iMsg) {
+        ID sender = ID.getInstance(iMsg.envelope.sender);
+        FileContent content = (FileContent) iMsg.content;
+        String filename = content.getFilename();
+
+        // TODO: upload onto FTP server
+        return null;
+    }
+
+    @Override
+    public byte[] downloadFileData(String url, InstantMessage iMsg) {
+        // TODO: download from FTP server
+
+        return new byte[0];
+    }
+
+    //-------- StateDelegate
+
+    @Override
+    public void enterState(State state, Machine machine) {
+        ServerState serverState = (ServerState) state;
+        if (serverState.name.equals(StateMachine.handshakingState)) {
+            // start handshake
+            handshake(null);
+        } else if (serverState.name.equals(StateMachine.runningState)) {
+            // TODO: send all packages waiting
+        }
+    }
+
+    @Override
+    public void exitState(State state, Machine machine) {
+
+    }
+
+    @Override
+    public void pauseState(State state, Machine machine) {
+
+    }
+
+    @Override
+    public void resumeState(State state, Machine machine) {
+
     }
 }

@@ -25,14 +25,21 @@
  */
 package chat.dim.database;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import chat.dim.client.Conversation;
-import chat.dim.client.ConversationDataSource;
+import chat.dim.common.Conversation;
+import chat.dim.common.ConversationDataSource;
 import chat.dim.dkd.InstantMessage;
 import chat.dim.mkm.ID;
+import chat.dim.notification.NotificationCenter;
 
 public class ConversationDatabase implements ConversationDataSource {
+
+    // constants
+    public static final String MessageUpdated = "MessageUpdated";
+    public static final String MessageCleaned = "MessageCleaned";
 
     private ConversationTable conversationTable = new ConversationTable();
     private MessageTable messageTable = new MessageTable();
@@ -75,23 +82,47 @@ public class ConversationDatabase implements ConversationDataSource {
         return messageTable.messageAtIndex(index, chatBox);
     }
 
+    private void postMessageUpdatedNotification(InstantMessage iMsg, Conversation chatBox) {
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("ID", chatBox.identifier);
+        userInfo.put("msg", iMsg);
+        NotificationCenter nc = NotificationCenter.getInstance();
+        nc.postNotification(MessageUpdated, this, userInfo);
+    }
+
     @Override
     public boolean insertMessage(InstantMessage iMsg, Conversation chatBox) {
-        return messageTable.insertMessage(iMsg, chatBox);
+        boolean OK = messageTable.insertMessage(iMsg, chatBox);
+        if (OK) {
+            postMessageUpdatedNotification(iMsg, chatBox);
+        }
+        return OK;
     }
 
     @Override
     public boolean removeMessage(InstantMessage iMsg, Conversation chatBox) {
-        return messageTable.removeMessage(iMsg, chatBox);
+        boolean OK = messageTable.removeMessage(iMsg, chatBox);
+        if (OK) {
+            postMessageUpdatedNotification(iMsg, chatBox);
+        }
+        return OK;
     }
 
     @Override
     public boolean withdrawMessage(InstantMessage iMsg, Conversation chatBox) {
-        return messageTable.withdrawMessage(iMsg, chatBox);
+        boolean OK = messageTable.withdrawMessage(iMsg, chatBox);
+        if (OK) {
+            postMessageUpdatedNotification(iMsg, chatBox);
+        }
+        return OK;
     }
 
     @Override
     public boolean saveReceipt(InstantMessage receipt, Conversation chatBox) {
-        return messageTable.saveReceipt(receipt, chatBox);
+        boolean OK = messageTable.saveReceipt(receipt, chatBox);
+        if (OK) {
+            postMessageUpdatedNotification(receipt, chatBox);
+        }
+        return OK;
     }
 }

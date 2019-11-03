@@ -23,56 +23,28 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.network;
 
-import java.util.Map;
+import chat.dim.common.Facebook;
+import chat.dim.mkm.ID;
+import chat.dim.protocol.HistoryCommand;
 
-/**
- *  Server
- */
-public interface Star {
+class HistoryCommandProcessor {
 
-    /**
-     *  Get connection status
-     *
-     * @return connection status
-     */
-    StarStatus getStatus();
+    private final Server server;
+    private final ContentDeliver deliver;
 
-    /**
-     *  Connect to a server
-     *
-     * @param options - launch options
-     */
-    void launch(Map<String, Object> options);
+    HistoryCommandProcessor(Server server, ContentDeliver deliver) {
+        super();
+        this.server = server;
+        this.deliver = deliver;
+    }
 
-    /**
-     *  Disconnect from the server
-     */
-    void terminate();
-
-    /**
-     *  Paused
-     */
-    void enterBackground();
-
-    /**
-     *  Resumed
-     */
-    void enterForeground();
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     */
-    void send(byte[] payload);
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     * @param completionHandler - callback
-     */
-    void send(byte[] payload, StarDelegate completionHandler);
+    boolean process(HistoryCommand cmd) {
+        Facebook facebook = Facebook.getInstance();
+        ID group = facebook.getID(cmd.getGroup());
+        assert group == null;
+        // NOTE: let the message processor to do the job
+        return false;
+    }
 }

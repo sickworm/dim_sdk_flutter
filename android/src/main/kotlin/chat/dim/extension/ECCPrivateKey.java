@@ -23,20 +23,41 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.group;
+package chat.dim.extension;
 
-import java.util.List;
+import java.util.Map;
 
-import chat.dim.mkm.GroupDataSource;
-import chat.dim.mkm.ID;
+import chat.dim.crypto.PublicKey;
+import chat.dim.crypto.impl.PrivateKeyImpl;
 
-public interface ChatroomDataSource extends GroupDataSource {
+public final class ECCPrivateKey extends PrivateKeyImpl {
 
-    /**
-     *  Get chatroom admins list
-     *
-     * @param chatroom - chatroom ID
-     * @return admins list (ID)
-     */
-    List<ID> getAdmins(ID chatroom);
+    public ECCPrivateKey(Map<String, Object> dictionary) {
+        super(dictionary);
+        // TODO: get key info from dictionary
+    }
+
+    @Override
+    public byte[] decrypt(byte[] ciphertext) {
+        // TODO: decrypt plaintext from ciphertext
+        return new byte[0];
+    }
+
+    @Override
+    public byte[] sign(byte[] data) {
+        // TODO: sign data and return the signature
+        return new byte[0];
+    }
+
+    @Override
+    public PublicKey getPublicKey() {
+        // TODO: get public key from private key
+        return null;
+    }
+
+    @Override
+    public byte[] getData() {
+        // TODO: get key data
+        return new byte[0];
+    }
 }

@@ -23,7 +23,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.client;
+package chat.dim.common;
 
 import chat.dim.dkd.InstantMessage;
 import chat.dim.mkm.ID;

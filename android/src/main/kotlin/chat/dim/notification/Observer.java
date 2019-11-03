@@ -23,56 +23,12 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
-
-import java.util.Map;
+package chat.dim.notification;
 
 /**
- *  Server
+ *  Notification observer
  */
-public interface Star {
+public interface Observer {
 
-    /**
-     *  Get connection status
-     *
-     * @return connection status
-     */
-    StarStatus getStatus();
-
-    /**
-     *  Connect to a server
-     *
-     * @param options - launch options
-     */
-    void launch(Map<String, Object> options);
-
-    /**
-     *  Disconnect from the server
-     */
-    void terminate();
-
-    /**
-     *  Paused
-     */
-    void enterBackground();
-
-    /**
-     *  Resumed
-     */
-    void enterForeground();
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     */
-    void send(byte[] payload);
-
-    /**
-     *  Send data to the connected server
-     *
-     * @param payload - data to be sent
-     * @param completionHandler - callback
-     */
-    void send(byte[] payload, StarDelegate completionHandler);
+    void onReceiveNotification(Notification notification);
 }

@@ -23,24 +23,27 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.client;
+package chat.dim.notification;
 
-import java.util.List;
 import java.util.Map;
 
-import chat.dim.mkm.ID;
+/**
+ *  Notification object with name, sender and extra info
+ */
+public class Notification {
 
-public interface NetworkDataSource {
+    public final String name;
+    public final Object sender;
+    public final Map userInfo;
 
-    List<String> allProviders();
+    public Notification(String name, Object sender, Map userInfo) {
+        super();
+        this.name = name;
+        this.sender = sender;
+        this.userInfo = userInfo;
+    }
 
-    Map<String, Object> getProviderConfig(ID sp);
-
-    boolean saveProviders(List<String> providers);
-
-    //-------- Station
-
-    List<Map<String, Object>> allStations(ID sp);
-
-    boolean saveStations(List<Map<String, Object>> stations, ID sp);
+    public Notification(String name, Object sender) {
+        this(name, sender, null);
+    }
 }

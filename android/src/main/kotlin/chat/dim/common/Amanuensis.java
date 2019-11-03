@@ -23,7 +23,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.client;
+package chat.dim.common;
 
 import chat.dim.dkd.InstantMessage;
 import chat.dim.mkm.Entity;
@@ -55,7 +55,7 @@ public class Amanuensis {
         return chatBox;
     }
 
-    public Conversation getConversation(InstantMessage iMsg) {
+    private Conversation getConversation(InstantMessage iMsg) {
         ID receiver = ID.getInstance(iMsg.envelope.receiver);
         if (receiver.getType().isGroup()) {
             // group chat, get chat box with group ID
@@ -69,5 +69,21 @@ public class Amanuensis {
         // personal chat, get chat box with contact ID
         ID sender = ID.getInstance(iMsg.envelope.sender);
         return getConversation(sender);
+    }
+
+    public boolean saveMessage(InstantMessage iMsg) {
+        Conversation chatBox = getConversation(iMsg);
+        if (chatBox == null) {
+            return false;
+        }
+        return chatBox.insertMessage(iMsg);
+    }
+
+    public boolean saveReceipt(InstantMessage iMsg) {
+        Conversation chatBox = getConversation(iMsg);
+        if (chatBox == null) {
+            return false;
+        }
+        return chatBox.saveReceipt(iMsg);
     }
 }

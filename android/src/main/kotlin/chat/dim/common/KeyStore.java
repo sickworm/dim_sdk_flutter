@@ -23,58 +23,33 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.client;
+package chat.dim.common;
 
-import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
-import chat.dim.crypto.PrivateKey;
-import chat.dim.mkm.GroupDataSource;
+import chat.dim.core.KeyCache;
+import chat.dim.crypto.SymmetricKey;
 import chat.dim.mkm.ID;
-import chat.dim.mkm.LocalUser;
-import chat.dim.mkm.Meta;
-import chat.dim.mkm.Profile;
-import chat.dim.mkm.UserDataSource;
 
-public interface SocialNetworkDataSource extends UserDataSource, GroupDataSource {
+public class KeyStore extends KeyCache {
+    private static final KeyStore ourInstance = new KeyStore();
+    public static KeyStore getInstance() { return ourInstance; }
+    private KeyStore() {
+        super();
+    }
 
-    boolean savePrivateKey(PrivateKey privateKey, ID identifier);
+    @Override
+    public boolean saveKeys(Map keyMap) {
+        return false;
+    }
 
-    //-------- Meta
+    @Override
+    public Map loadKeys() {
+        return null;
+    }
 
-    boolean saveMeta(Meta meta, ID identifier);
-
-    //-------- Profile
-
-    boolean verifyProfile(Profile profile);
-
-    boolean saveProfile(Profile profile);
-
-    //-------- Address Name Service
-
-    boolean saveAnsRecord(String name, ID identifier);
-
-    ID ansRecord(String name);
-
-    Set<String> ansNames(String identifier);
-
-    //-------- User
-
-    LocalUser getCurrentUser();
-
-    void setCurrentUser(LocalUser user);
-
-    List<ID> allUsers();
-
-    boolean addUser(ID user);
-
-    boolean removeUser(ID user);
-
-    boolean addContact(ID contact, ID user);
-
-    boolean removeContact(ID contact, ID user);
-
-    //-------- Group
-
-    boolean existsMember(ID member, ID group);
+    @Override
+    public SymmetricKey reuseCipherKey(ID sender, ID receiver, SymmetricKey key) {
+        return super.reuseCipherKey(sender, receiver, key);
+    }
 }

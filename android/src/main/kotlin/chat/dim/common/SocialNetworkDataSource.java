@@ -23,21 +23,64 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.group;
+package chat.dim.common;
 
 import java.util.List;
+import java.util.Set;
 
-import chat.dim.mkm.Group;
+import chat.dim.crypto.PrivateKey;
+import chat.dim.mkm.GroupDataSource;
 import chat.dim.mkm.ID;
+import chat.dim.mkm.LocalUser;
+import chat.dim.mkm.Meta;
+import chat.dim.mkm.Profile;
+import chat.dim.mkm.UserDataSource;
 
-public class Chatroom extends Group {
+public interface SocialNetworkDataSource extends UserDataSource, GroupDataSource {
 
-    public Chatroom(ID identifier) {
-        super(identifier);
-    }
+    boolean savePrivateKey(PrivateKey privateKey, ID identifier);
 
-    public List<ID> getAdmins() {
-        ChatroomDataSource dataSource = (ChatroomDataSource) this.dataSource;
-        return dataSource.getAdmins(identifier);
-    }
+    //-------- Meta
+
+    boolean saveMeta(Meta meta, ID identifier);
+
+    //-------- Profile
+
+    boolean verifyProfile(Profile profile);
+
+    boolean saveProfile(Profile profile);
+
+    //-------- Address Name Service
+
+    boolean saveAnsRecord(String name, ID identifier);
+
+    ID ansRecord(String name);
+
+    Set<String> ansNames(String identifier);
+
+    //-------- User
+
+    LocalUser getCurrentUser();
+
+    void setCurrentUser(LocalUser user);
+
+    List<ID> allUsers();
+
+    boolean addUser(ID user);
+
+    boolean removeUser(ID user);
+
+    boolean addContact(ID contact, ID user);
+
+    boolean removeContact(ID contact, ID user);
+
+    boolean saveContacts(List<ID> contacts, ID user);
+
+    //-------- Group
+
+    boolean addMember(ID member, ID group);
+
+    boolean removeMember(ID member, ID group);
+
+    boolean saveMembers(List<ID> members, ID group);
 }

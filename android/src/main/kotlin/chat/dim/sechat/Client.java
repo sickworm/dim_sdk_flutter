@@ -7,18 +7,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import chat.dim.client.Facebook;
+import chat.dim.common.Facebook;
 import chat.dim.database.ExternalStorage;
 import chat.dim.format.Base64;
 import chat.dim.format.BaseCoder;
 import chat.dim.mkm.ID;
 import chat.dim.mkm.LocalUser;
 import chat.dim.model.NetworkConfig;
-import chat.dim.network.Connection;
 import chat.dim.network.Server;
 import chat.dim.network.ServiceProvider;
 import chat.dim.network.Terminal;
 import chat.dim.protocol.Command;
+import chat.dim.stargate.simplegate.Fence;
 
 public class Client extends Terminal {
 
@@ -79,8 +79,12 @@ public class Client extends Terminal {
         // connect server
         Server server = new Server(station);
         server.delegate = this;
-        connection = new Connection(server);
+        server.star = new Fence(server);
         server.start(station);
+        setCurrentServer(server);
+
+        // get user from database and login
+        login(null);
     }
 
     @SuppressWarnings("unchecked")
@@ -122,28 +126,31 @@ public class Client extends Terminal {
     }
 
     public void terminate() {
-        if (connection != null) {
-            connection.server.end();
+        Server server = getCurrentServer();
+        if (server != null) {
+            server.end();
         }
     }
 
 
     public void enterBackground() {
-        if (connection != null) {
+        Server server = getCurrentServer();
+        if (server != null) {
             // report client state
             Command cmd = new Command("broadcast");
             cmd.put("title", "report");
             cmd.put("state", "background");
-            connection.sendCommand(cmd);
+            sendCommand(cmd);
             // pause the server
-            connection.server.pause();
+            server.pause();
         }
     }
 
     public void enterForeground() {
-        if (connection != null) {
+        Server server = getCurrentServer();
+        if (server != null) {
             // resume the server
-            connection.server.resume();
+            server.resume();
 
             // clear icon badge
 
@@ -151,7 +158,7 @@ public class Client extends Terminal {
             Command cmd = new Command("broadcast");
             cmd.put("title", "report");
             cmd.put("state", "foreground");
-            connection.sendCommand(cmd);
+            sendCommand(cmd);
         }
     }
 }

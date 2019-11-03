@@ -23,13 +23,20 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.client;
+package chat.dim.common;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import chat.dim.core.Barrack;
 import chat.dim.crypto.PrivateKey;
+import chat.dim.crypto.PublicKey;
+import chat.dim.crypto.impl.PrivateKeyImpl;
+import chat.dim.crypto.impl.PublicKeyImpl;
+import chat.dim.extension.BTCMeta;
+import chat.dim.extension.ECCPrivateKey;
+import chat.dim.extension.ECCPublicKey;
+import chat.dim.extension.ETHMeta;
 import chat.dim.group.Chatroom;
 import chat.dim.group.Polylogue;
 import chat.dim.mkm.Address;
@@ -41,6 +48,7 @@ import chat.dim.mkm.NetworkType;
 import chat.dim.mkm.Profile;
 import chat.dim.mkm.User;
 import chat.dim.network.Station;
+import chat.dim.utils.Log;
 
 public class Facebook extends Barrack {
     private static final Facebook ourInstance = new Facebook();
@@ -73,10 +81,37 @@ public class Facebook extends Barrack {
         return database.verifyProfile(profile);
     }
 
+    //---- Relationship
+
+    public boolean saveContacts(List<ID> contacts, ID user) {
+        return database.saveContacts(contacts, user);
+    }
+
+    public boolean addMember(ID member, ID group) {
+        return database.addMember(member, group);
+    }
+
+    public boolean removeMember(ID member, ID group) {
+        return database.removeMember(member, group);
+    }
+
+    public boolean saveMembers(List<ID> members, ID group) {
+        return database.saveMembers(members, group);
+    }
+
+    //----
+
     public String getNickname(ID identifier) {
         assert identifier.getType().isUser();
         User user = getUser(identifier);
         return user == null ? null : user.getName();
+    }
+
+    public String getNumberString(ID identifier) {
+        long number = identifier.getNumber();
+        String string = String.format(Locale.CHINA, "%010d", number);
+        string = string.substring(0, 3) + "-" + string.substring(3, 6) + "-" + string.substring(6);
+        return string;
     }
 
     public ID getID(Address address) {
@@ -138,7 +173,8 @@ public class Facebook extends Barrack {
             // FIXME: prevent station to be erased from memory cache
             user = new Station(identifier);
         } else {
-            throw new UnsupportedOperationException("unsupported user type: " + type);
+            Log.error("unsupported user type: " + type);
+//            throw new UnsupportedOperationException("unsupported user type: " + type);
         }
         // cache it in barrack
         cacheUser(user);
@@ -211,87 +247,71 @@ public class Facebook extends Barrack {
 
     @Override
     public ID getFounder(ID group) {
-        if (group == ID.EVERYONE) {
-            // Consensus: the founder of group 'everyone@everywhere'
-            //            'Albert Moky'
-            return getID("founder");
-        }
-        if (group.address == Address.EVERYWHERE) {
-            // DISCUSS: who should be the founder of group 'xxx@everywhere'?
-            //          'anyone@anywhere', or 'xxx.founder@anywhere'
-            return getID("owner");
-        }
         // get from database
         ID founder = database.getFounder(group);
         if (founder != null) {
             return founder;
         }
-        // check each member's public key with group's meta.key
-        Meta gMeta = getMeta(group);
-        List<ID> members = database.getMembers(group);
-        if (gMeta == null || members == null) {
-            //throw new NullPointerException("failed to get group info: " + gMeta + ", " + members);
-            return null;
-        }
-        for (ID member : members) {
-            Meta meta = getMeta(member);
-            if (meta == null) {
-                // TODO: query meta for this member from DIM network
-                continue;
-            }
-            if (gMeta.matches(meta.key)) {
-                // if public key matched, means the group is created by this member
-                return member;
-            }
-        }
-        return null;
+        return super.getFounder(group);
     }
 
     @Override
     public ID getOwner(ID group) {
-        if (group == ID.EVERYONE) {
-            // Consensus: the owner of group 'everyone@everywhere'
-            //            'anyone@anywhere'
-            return ID.ANYONE;
-        }
-        if (group.address == Address.EVERYWHERE) {
-            // DISCUSS: who should be the owner of group 'xxx@everywhere'?
-            //          'anyone@anywhere', or 'xxx.owner@anywhere'
-            return ID.ANYONE;
-        }
         // get from database
         ID owner = database.getOwner(group);
         if (owner != null) {
             return owner;
         }
-        if (group.getType().value == NetworkType.Polylogue.value) {
-            // Polylogue's owner is the founder
-            return getFounder(group);
-        }
-        return null;
+        return super.getOwner(group);
     }
 
     @Override
     public List<ID> getMembers(ID group) {
-        if (group == ID.EVERYONE) {
-            // Consensus: the member of group 'everyone@everywhere'
-            //            'anyone@anywhere'
-            List<ID> members = new ArrayList<>();
-            members.add(ID.ANYONE);
-            return members;
-        }
-        if (group.address == Address.EVERYWHERE) {
-            // DISCUSS: who should be the member of group 'xxx@everywhere'?
-            //          'anyone@anywhere', or 'xxx@anywhere', or 'xxx.member@anywhere'
-            List<ID> members = new ArrayList<>();
-            members.add(new ID(group.name, Address.ANYWHERE));
-            return members;
-        }
         // get from database
-        return database.getMembers(group);
+        List<ID> members = database.getMembers(group);
+        if (members != null) {
+            return members;
+        }
+        return super.getMembers(group);
+    }
+
+    public boolean isFounder(ID member, ID group) {
+        // check member's public key with group's meta.key
+        Meta gMeta = getMeta(group);
+        if (gMeta == null) {
+            throw new NullPointerException("failed to get meta for group: " + group);
+        }
+        Meta meta = getMeta(member);
+        if (meta == null) {
+            throw new NullPointerException("failed to get meta for member: " + member);
+        }
+        return gMeta.matches(meta.key);
     }
 
     public boolean existsMember(ID member, ID group) {
-        return database.existsMember(member, group);
+        List<ID> members = getMembers(group);
+        for (ID item : members) {
+            if (item.equals(member)) {
+                return true;
+            }
+        }
+        ID owner = getOwner(group);
+        return owner == null || owner.equals(member);
+    }
+
+    static {
+        // register new asymmetric cryptography key classes
+        PrivateKeyImpl.register(PrivateKey.ECC, ECCPrivateKey.class);
+        PublicKeyImpl.register(PublicKey.ECC, ECCPublicKey.class);
+
+        // register new address classes
+//        Address.register(BTCAddress.class);
+//        Address.register(ETHAddress.class);
+
+        // register new meta classes
+        Meta.register(Meta.VersionBTC, BTCMeta.class);
+        Meta.register(Meta.VersionExBTC, BTCMeta.class);
+        Meta.register(Meta.VersionETH, ETHMeta.class);
+        Meta.register(Meta.VersionExETH, ETHMeta.class);
     }
 }
