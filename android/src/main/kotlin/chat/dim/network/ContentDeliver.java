@@ -40,7 +40,7 @@ import chat.dim.protocol.Command;
 import chat.dim.protocol.MetaCommand;
 import chat.dim.protocol.ProfileCommand;
 
-class ContentDeliver {
+public class ContentDeliver {
 
     private Facebook facebook = Facebook.getInstance();
 
@@ -199,5 +199,9 @@ class ContentDeliver {
 
         server.handshake(null);
         return true;
+    }
+
+    public boolean hasLogin() {
+        return server.session != null;
     }
 }

@@ -161,4 +161,8 @@ public class Client extends Terminal {
             sendCommand(cmd);
         }
     }
+
+    public boolean hasLogin() {
+        return deliver.hasLogin();
+    }
 }

@@ -52,7 +52,7 @@ public class Terminal implements StationDelegate {
     private Messenger messenger = Messenger.getInstance();
 
     private CommandProcessor processor;
-    private ContentDeliver deliver;
+    public ContentDeliver deliver;
 
     private Server currentServer = null;
 

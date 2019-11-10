@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 class Contact {
@@ -92,7 +93,7 @@ abstract class IDimData {
       {Page page = Page.kLastPage});
   Future<void> addChatMessage(String sessionId, ChatMessage message);
 
-  Future<void> setLocalUser(UserInfo userInfo, LocalUserKey key);
+  Future<void> setLocalUserInfo(UserInfo userInfo, LocalUserKey key);
   Future<void> addContact(UserInfo userInfo);
   Future<void> popSession(ChatSession chatSession);
 }
@@ -163,7 +164,7 @@ class MockDimData extends IDimData {
   }
 
   @override
-  Future<void> setLocalUser(UserInfo userInfo, LocalUserKey key) {
+  Future<void> setLocalUserInfo(UserInfo userInfo, LocalUserKey key) {
     return Future.delayed(
         Duration(milliseconds: 50), () => _localUser = userInfo);
   }
@@ -218,7 +219,72 @@ class MockDimData extends IDimData {
   }
 }
 
-class DimDataManager extends MockDimData {
+class PlatformDimData extends IDimData {
+  static const platform = const MethodChannel('dim_sdk_flutter/dim_data');
+
+  @override
+  Future<void> addChatMessage(String sessionId, ChatMessage message) {
+    // TODO: implement addChatMessage
+    return null;
+  }
+
+  @override
+  Future<void> addContact(UserInfo userInfo) {
+    // TODO: implement addContact
+    return null;
+  }
+
+  @override
+  Future<List<ChatMessage>> getChatMessages(String sessionId,
+      {Page page = Page.kLastPage}) {
+    // TODO: implement getChatMessages
+    return null;
+  }
+
+  @override
+  Future<List<ChatSession>> getChatSessionList() {
+    // TODO: implement getChatSessionList
+    return null;
+  }
+
+  @override
+  Future<List<Contact>> getContactList() {
+    // TODO: implement getContactList
+    return null;
+  }
+
+  @override
+  Future<UserInfo> getLocalUserInfo() async {
+    try {
+      Map mapInfo = await platform.invokeMethod('getLocalUserInfo');
+      return UserInfo(mapInfo['name'], mapInfo['avatar'], mapInfo['userId'],
+          mapInfo['slogan']);
+    } on PlatformException catch (e) {
+      print(e);
+    }
+    return null;
+  }
+
+  @override
+  Future<UserInfo> getUserInfo(String userId) {
+    // TODO: implement getUserInfo
+    return null;
+  }
+
+  @override
+  Future<void> popSession(ChatSession chatSession) {
+    // TODO: implement popSession
+    return null;
+  }
+
+  @override
+  Future<void> setLocalUserInfo(UserInfo userInfo, LocalUserKey key) {
+    // TODO: implement setLocalUser
+    return null;
+  }
+}
+
+class DimDataManager extends PlatformDimData {
   static DimDataManager _instance = new DimDataManager._();
   static DimDataManager getInstance() {
     return _instance;
