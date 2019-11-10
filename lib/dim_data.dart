@@ -1,13 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
-class Contact {
-  final String name;
-  final String avatar;
-
-  const Contact(this.name, this.avatar);
-}
-
 class ChatSession {
   final UserInfo userInfo;
   final String sessionId;
@@ -84,9 +77,10 @@ class Page {
 }
 
 abstract class IDimData {
-  Future<List<Contact>> getContactList();
+  Future<List<UserInfo>> getContactList();
   // TODO add page select
   Future<List<ChatSession>> getChatSessionList();
+  Future<String> getChatSessionId(String userId);
   Future<UserInfo> getUserInfo(String userId);
   Future<UserInfo> getLocalUserInfo();
   Future<List<ChatMessage>> getChatMessages(String sessionId,
@@ -114,7 +108,7 @@ class MockDimData extends IDimData {
   UserInfo _localUser = kTestLogin ? null : kMocklocalUser;
   List<UserInfo> _contacts = List();
   List<ChatSession> _chatSessions = [
-    ChatSession(kMocklocalUser2, kMocklocalUser2.userId,
+    ChatSession(kMocklocalUser2, _userIdToSessionId(kMocklocalUser2.userId),
         'hi this is the last chat message', 0)
   ];
   Map<String, List<ChatMessage>> _chatMessages = {
@@ -126,18 +120,19 @@ class MockDimData extends IDimData {
   };
 
   @override
-  Future<List<Contact>> getContactList() {
-    return Future.delayed(
-        Duration(milliseconds: 300),
-        () => [
-              Contact('Sickworm2',
-                  'https://avatars3.githubusercontent.com/u/2757460?s=460&v=4')
-            ]);
+  Future<List<UserInfo>> getContactList() {
+    return Future.delayed(Duration(milliseconds: 300), () => [kMocklocalUser2]);
   }
 
   @override
   Future<List<ChatSession>> getChatSessionList() {
     return Future.delayed(Duration(milliseconds: 300), () => _chatSessions);
+  }
+
+  @override
+  Future<String> getChatSessionId(String userId) {
+    return Future.delayed(
+        Duration(milliseconds: 0), () => _userIdToSessionId(userId));
   }
 
   @override
@@ -217,6 +212,10 @@ class MockDimData extends IDimData {
       }
     });
   }
+
+  static _userIdToSessionId(String userId) {
+    return userId;
+  }
 }
 
 class PlatformDimData extends IDimData {
@@ -236,21 +235,32 @@ class PlatformDimData extends IDimData {
 
   @override
   Future<List<ChatMessage>> getChatMessages(String sessionId,
-      {Page page = Page.kLastPage}) {
-    // TODO: implement getChatMessages
-    return null;
+      {Page page = Page.kLastPage}) async {
+    return [];
   }
 
   @override
-  Future<List<ChatSession>> getChatSessionList() {
-    // TODO: implement getChatSessionList
-    return null;
+  Future<List<ChatSession>> getChatSessionList() async {
+    return [];
   }
 
   @override
-  Future<List<Contact>> getContactList() {
-    // TODO: implement getContactList
-    return null;
+  Future<String> getChatSessionId(String userId) async {
+    return _userIdToSessionId(userId);
+  }
+
+  @override
+  Future<List<UserInfo>> getContactList() async {
+    try {
+      List listInfo = await platform.invokeMethod('getContactList');
+      return listInfo
+          .map(
+              (c) => UserInfo(c['name'], c['avatar'], c['userId'], c['slogan']))
+          .toList();
+    } on PlatformException catch (e) {
+      print(e);
+    }
+    return [];
   }
 
   @override
@@ -281,6 +291,10 @@ class PlatformDimData extends IDimData {
   Future<void> setLocalUserInfo(UserInfo userInfo, LocalUserKey key) {
     // TODO: implement setLocalUser
     return null;
+  }
+
+  static _userIdToSessionId(String userId) {
+    return userId;
   }
 }
 

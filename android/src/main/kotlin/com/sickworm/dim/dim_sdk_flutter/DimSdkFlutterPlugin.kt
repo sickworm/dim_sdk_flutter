@@ -19,6 +19,8 @@ class DimSdkFlutterPlugin {
             MethodChannel(registrar.messenger(), "dim_sdk_flutter/dim_data").setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getLocalUserInfo" -> DimClient.getLocalUser(result)
+                    "getContactList" -> DimClient.getContactList(result)
+                    "getSessionList" -> DimClient.getChatSessionList(result)
                     "sendText" -> DimClient.sendText(call, result)
                     else -> result.notImplemented()
                 }

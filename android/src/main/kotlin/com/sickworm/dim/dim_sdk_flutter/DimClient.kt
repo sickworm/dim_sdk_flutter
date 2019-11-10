@@ -1,12 +1,15 @@
 
 package com.sickworm.dim.dim_sdk_flutter
 
+import chat.dim.common.Facebook
 import chat.dim.common.Messenger
 import chat.dim.core.Callback
 import chat.dim.dkd.Content
 import chat.dim.dkd.InstantMessage
+import chat.dim.mkm.Entity
 import chat.dim.mkm.ID
 import chat.dim.mkm.LocalUser
+import chat.dim.mkm.User
 import chat.dim.model.AccountDatabase
 import chat.dim.model.MessageProcessor
 import chat.dim.model.NetworkConfig
@@ -31,11 +34,14 @@ object DimClient: CoroutineScope, Observer {
     private val msgDB = MessageProcessor.getInstance()
     private val networkConfig = NetworkConfig.getInstance()
     private val messenger = Messenger.getInstance()
+    private val facebook = Facebook.getInstance()
 
-    private val user:LocalUser
+    private val localUser: LocalUser
         get() = client.currentUser
 
     var events: EventChannel.EventSink? = null
+
+    private val station = ID.getInstance("gsp-s001@x5Zh9ixt8ECr59XLye1y5WWfaX4fcoaaSC")
 
     init {
         // TODO optimize
@@ -50,13 +56,27 @@ object DimClient: CoroutineScope, Observer {
 
     fun getLocalUser(result: MethodChannel.Result) = launch {
         checkLogin()
-        val userInfo = UserInfo(
-                user.name,
-                "https://avatars3.githubusercontent.com/u/2757460?s=460&v=4",
-                user.identifier.toString(),
-                user.identifier.toString())
+        val userInfo = UserInfo.fromEntity(localUser)
         launch(Dispatchers.Main) {
             result.success(userInfo.toMap())
+        }
+    }
+
+    fun getContactList(result: MethodChannel.Result) = launch {
+        checkLogin()
+        val contactList = localUser.contacts.map {
+            UserInfo.fromEntity(facebook.getUser(it)).toMap()
+        }
+        launch(Dispatchers.Main) {
+            result.success(contactList +
+                    UserInfo.fromEntity(facebook.getUser(station)).toMap())
+        }
+    }
+
+    fun getChatSessionList(result: MethodChannel.Result) = launch {
+        checkLogin()
+        launch(Dispatchers.Main) {
+            result.success(emptyList<Any>())
         }
     }
 
@@ -74,7 +94,6 @@ object DimClient: CoroutineScope, Observer {
             println("DimClient: $result $error")
             channelResult.success(null)
         }
-        val messenger = Messenger.getInstance()
         if (!messenger.sendMessage(iMsg, callback, true)) {
             println("DimClient: failed to send message: $iMsg")
         }

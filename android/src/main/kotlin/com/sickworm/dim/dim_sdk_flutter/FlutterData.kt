@@ -1,17 +1,29 @@
 package com.sickworm.dim.dim_sdk_flutter
 
-import kotlin.reflect.full.memberProperties
+import chat.dim.mkm.Entity
+import kotlin.reflect.KVisibility
+import kotlin.reflect.full.declaredMemberProperties
 
 fun <T : Any> T.toMap(): Map<String, Any?> {
     val map = mutableMapOf<String, Any?>()
-    this.javaClass.kotlin.memberProperties.map {
-        map[it.name] = it.get(this)
-    }
+    this.javaClass.kotlin.declaredMemberProperties
+            .filter { it.visibility == KVisibility.PUBLIC }
+            .map { map[it.name] = it.get(this) }
     return map
 }
 
-class UserInfo(
+data class UserInfo(
         val name: String,
         val avatar: String,
         val userId: String,
-        val slogan: String)
+        val slogan: String) {
+
+    companion object {
+        fun fromEntity(entity: Entity): UserInfo {
+            return UserInfo(entity.name,
+                    "https://avatars3.githubusercontent.com/u/2757460?s=460&v=4",
+                    entity.toString(),
+                    entity.toString())
+        }
+    }
+}
