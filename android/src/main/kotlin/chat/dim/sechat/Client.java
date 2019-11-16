@@ -163,6 +163,6 @@ public class Client extends Terminal {
     }
 
     public boolean hasLogin() {
-        return deliver.hasLogin();
+        return deliver != null && deliver.hasLogin();
     }
 }

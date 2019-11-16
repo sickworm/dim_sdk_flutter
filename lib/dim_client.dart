@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
+
 import 'dim_data.dart';
 
 class ServerInfo {
@@ -14,7 +16,7 @@ abstract class IDimConnection {
   OnReceive receive;
   IDimConnection();
   Future<void> launch(ServerInfo serverInfo);
-  Future<void> send(Content content);
+  Future<void> send(Content content, String receverId);
 }
 
 class EchoDimConnection extends IDimConnection {
@@ -26,11 +28,31 @@ class EchoDimConnection extends IDimConnection {
   }
 
   @override
-  Future<void> send(Content content) {
+  Future<void> send(Content content, String receverId) {
     return Future.delayed(Duration(milliseconds: 1000), () {
       Future.delayed(Duration(milliseconds: 1000), () {
         receive(Content(ContentType.Text, content.data));
       });
+    });
+  }
+}
+
+class PlatformDimConnection extends IDimConnection {
+  static const platform = const MethodChannel('dim_sdk_flutter/dim_client');
+  static const listener =
+      const MethodChannel('dim_sdk_flutter/dim_client_listener');
+
+  @override
+  Future<void> launch(ServerInfo serverInfo) {
+    return platform.invokeMethod("launch");
+  }
+
+  @override
+  Future<void> send(Content content, String receiverId) {
+    return platform.invokeMethod("sendMessage", {
+      "type": content.type.index,
+      "data": content.data,
+      "receiverId": receiverId
     });
   }
 }
@@ -63,7 +85,7 @@ class DimClient extends IDimConnection with DispatchDimConnection {
     return _instance;
   }
 
-  IDimConnection connection = EchoDimConnection();
+  IDimConnection connection = PlatformDimConnection();
 
   DimClient._() {
     connection.receive = _dispatch;
@@ -75,7 +97,7 @@ class DimClient extends IDimConnection with DispatchDimConnection {
   }
 
   @override
-  Future<void> send(Content content) {
-    return connection.send(content);
+  Future<void> send(Content content, String receverId) {
+    return connection.send(content, receverId);
   }
 }

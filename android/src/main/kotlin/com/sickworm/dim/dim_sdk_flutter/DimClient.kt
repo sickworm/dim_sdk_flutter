@@ -6,10 +6,8 @@ import chat.dim.common.Messenger
 import chat.dim.core.Callback
 import chat.dim.dkd.Content
 import chat.dim.dkd.InstantMessage
-import chat.dim.mkm.Entity
 import chat.dim.mkm.ID
 import chat.dim.mkm.LocalUser
-import chat.dim.mkm.User
 import chat.dim.model.AccountDatabase
 import chat.dim.model.MessageProcessor
 import chat.dim.model.NetworkConfig
@@ -43,15 +41,14 @@ object DimClient: CoroutineScope, Observer {
 
     private val station = ID.getInstance("gsp-s001@x5Zh9ixt8ECr59XLye1y5WWfaX4fcoaaSC")
 
-    init {
-        // TODO optimize
-        login()
-    }
-
-    fun login() = launch {
+    fun login(result: MethodChannel.Result) = launch {
         println("DimClient: login")
         client.launch(mapOf("Application" to this))
         NotificationCenter.getInstance().addObserver(this@DimClient, "DimClient")
+        checkLogin()
+        launch(Dispatchers.Main) {
+            result.success(null)
+        }
     }
 
     fun getLocalUser(result: MethodChannel.Result) = launch {
@@ -80,19 +77,27 @@ object DimClient: CoroutineScope, Observer {
         }
     }
 
-    fun sendText(call: MethodCall, result: MethodChannel.Result) = launch {
+    fun sendMessage(call: MethodCall, result: MethodChannel.Result) = launch {
         checkLogin()
-        val text = call.argument<String>("text")
-        val receiver = call.argument<String>("receiver")
-        sendMessage(TextContent(text), ID.getInstance(receiver), result)
+        val type = call.argument<Int>("type")
+        val data = call.argument<String>("data")
+        val receiverId = call.argument<String>("receiverId")
+        println("sendMessage $type $data $receiverId")
+        when (type) {
+            ContentType.Text.ordinal -> sendMessage(TextContent(data), ID.getInstance(receiverId), result)
+            else -> println("sendMessage not support type $type")
+        }
+
     }
 
     private fun sendMessage(content: Content, receiver: ID, channelResult: MethodChannel.Result) {
-        val iMsg = InstantMessage(content, client.currentUser, receiver)
+        val iMsg = InstantMessage(content, client.currentUser.identifier, receiver)
         // prepare to send
         val callback = Callback { result, error ->
             println("DimClient: $result $error")
-            channelResult.success(null)
+            launch(Dispatchers.Main) {
+                channelResult.success(null)
+            }
         }
         if (!messenger.sendMessage(iMsg, callback, true)) {
             println("DimClient: failed to send message: $iMsg")
@@ -105,7 +110,7 @@ object DimClient: CoroutineScope, Observer {
 
     private suspend fun checkLogin() {
         while (!client.hasLogin()) {
-            delay(500)
+            delay(10)
         }
     }
 }
