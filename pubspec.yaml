@@ -5,15 +5,15 @@ author:
 homepage:
 
 environment:
-  sdk: ">=2.1.0 <3.0.0"
+  sdk: ">=2.5.0 <3.0.0"
 
 dependencies:
-  uuid: ^2.0.2
   flutter:
     sdk: flutter
-  sqflite:
-  path:
-  logging: "^0.11.3+1"
+  sqflite: "^1.1.7+2"
+  path: "^1.6.4"
+  logging: "^0.11.3+2"
+  permission: "^0.1.5"
 
 dev_dependencies:
   flutter_test:
