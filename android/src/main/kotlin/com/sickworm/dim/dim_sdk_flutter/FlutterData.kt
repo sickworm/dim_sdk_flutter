@@ -1,6 +1,8 @@
 package com.sickworm.dim.dim_sdk_flutter
 
+import chat.dim.dkd.InstantMessage
 import chat.dim.mkm.Entity
+import chat.dim.protocol.ContentType
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.declaredMemberProperties
 
@@ -16,15 +18,15 @@ fun <T : Any> T.toMap(): Map<String, Any?> {
     return map
 }
 
-data class UserInfo(
+data class FUserInfo(
         val name: String,
         val avatar: String,
         val userId: String,
         val slogan: String) {
 
     companion object {
-        fun fromEntity(entity: Entity): UserInfo {
-            return UserInfo(entity.name,
+        fun fromEntity(entity: Entity): FUserInfo {
+            return FUserInfo(entity.name,
                     "https://avatars3.githubusercontent.com/u/2757460?s=460&v=4",
                     entity.identifier.toString(),
                     entity.identifier.toString())
@@ -32,8 +34,20 @@ data class UserInfo(
     }
 }
 
-enum class ContentType {
+enum class FContentType {
     Text,
     Image,
     File
+}
+
+data class FContent(
+        val contentType: Int,
+        val data: String) {
+
+    companion object {
+        fun fromIMsg(iMsg: InstantMessage) = when(iMsg.content.type) {
+            ContentType.TEXT.value -> FContent(FContentType.Text.ordinal, iMsg.content["text"] as String)
+            else -> FContent(FContentType.Text.ordinal, iMsg.toString())
+        }
+    }
 }

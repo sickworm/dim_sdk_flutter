@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 
 import 'dim_data.dart';
+
+final Logger log = new Logger('DimClient');
 
 class ServerInfo {
   String name;
@@ -40,10 +43,18 @@ class EchoDimConnection extends IDimConnection {
 class PlatformDimConnection extends IDimConnection {
   static const platform = const MethodChannel('dim_sdk_flutter/dim_client');
   static const listener =
-      const MethodChannel('dim_sdk_flutter/dim_client_listener');
+      const EventChannel('dim_sdk_flutter/dim_client_listener');
 
   @override
   Future<void> launch(ServerInfo serverInfo) {
+    listener.receiveBroadcastStream().listen((data) {
+      log.info("listener receive $data");
+      var content =
+          Content(intToContentType(data["contentType"]), data["data"]);
+      receive(content);
+    }, onError: (error) {
+      log.warning("listener error $error");
+    });
     return platform.invokeMethod("launch");
   }
 

@@ -68,6 +68,7 @@ class SocketClient implements Runnable {
 
     private byte[] process(byte[] data, Task task) {
         if (data == null || data.length < 3) {
+            task.onSuccess();
             return null;
         }
         if (data[0] != '{') {

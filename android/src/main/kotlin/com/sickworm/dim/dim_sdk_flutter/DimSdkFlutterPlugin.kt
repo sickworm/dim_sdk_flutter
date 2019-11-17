@@ -1,5 +1,6 @@
 package com.sickworm.dim.dim_sdk_flutter
 
+import android.util.Log
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry.Registrar
@@ -34,11 +35,11 @@ class DimSdkFlutterPlugin {
 
             EventChannel(registrar.view(), "dim_sdk_flutter/dim_client_listener").setStreamHandler(
                     object : EventChannel.StreamHandler {
-                        override fun onListen(arguments: Any, events: EventChannel.EventSink) {
+                        override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                             DimClient.events = events
                         }
 
-                        override fun onCancel(arguments: Any) {
+                        override fun onCancel(arguments: Any?) {
                         }
                     })
         }

@@ -44,7 +44,7 @@ object DimClient: CoroutineScope, Observer {
     fun login(result: MethodChannel.Result) = launch {
         println("DimClient: login")
         client.launch(mapOf("Application" to this))
-        NotificationCenter.getInstance().addObserver(this@DimClient, "DimClient")
+        NotificationCenter.getInstance().addObserver(this@DimClient, "MessageUpdated")
         checkLogin()
         launch(Dispatchers.Main) {
             result.success(null)
@@ -53,7 +53,7 @@ object DimClient: CoroutineScope, Observer {
 
     fun getLocalUser(result: MethodChannel.Result) = launch {
         checkLogin()
-        val userInfo = UserInfo.fromEntity(localUser)
+        val userInfo = FUserInfo.fromEntity(localUser)
         launch(Dispatchers.Main) {
             result.success(userInfo.toMap())
         }
@@ -62,11 +62,11 @@ object DimClient: CoroutineScope, Observer {
     fun getContactList(result: MethodChannel.Result) = launch {
         checkLogin()
         val contactList = localUser.contacts.map {
-            UserInfo.fromEntity(facebook.getUser(it)).toMap()
+            FUserInfo.fromEntity(facebook.getUser(it)).toMap()
         }
         launch(Dispatchers.Main) {
             result.success(contactList +
-                    UserInfo.fromEntity(facebook.getUser(station)).toMap())
+                    FUserInfo.fromEntity(facebook.getUser(station)).toMap())
         }
     }
 
@@ -84,7 +84,7 @@ object DimClient: CoroutineScope, Observer {
         val receiverId = call.argument<String>("receiverId")
         println("sendMessage $type $data $receiverId")
         when (type) {
-            ContentType.Text.ordinal -> sendMessage(TextContent(data), ID.getInstance(receiverId), result)
+            FContentType.Text.ordinal -> sendMessage(TextContent(data), ID.getInstance(receiverId), result)
             else -> println("sendMessage not support type $type")
         }
 
@@ -105,7 +105,10 @@ object DimClient: CoroutineScope, Observer {
     }
 
     override fun onReceiveNotification(notification: Notification) {
-        events?.success(null)
+        val iMsg = notification.userInfo["msg"] as InstantMessage
+        launch(Dispatchers.Main) {
+            events?.success(FContent.fromIMsg(iMsg).toMap())
+        }
     }
 
     private suspend fun checkLogin() {

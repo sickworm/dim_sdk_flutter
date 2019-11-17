@@ -29,6 +29,10 @@ class LocalUserKey {
 
 enum ContentType { Text, Image, File }
 
+ContentType intToContentType(int index) {
+  return ContentType.values.firstWhere((v) => v.index == index);
+}
+
 class Content {
   final ContentType type;
   final String data;
@@ -214,11 +218,6 @@ class MockDimData extends RamDimData {
 
 class PlatformDimData extends RamDimData {
   static const platform = const MethodChannel('dim_sdk_flutter/dim_data');
-
-  @override
-  Future<void> addChatMessage(String sessionId, ChatMessage message) async {
-    return null;
-  }
 
   @override
   Future<List<UserInfo>> getContactList() async {
