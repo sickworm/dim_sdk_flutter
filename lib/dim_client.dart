@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
+import 'package:permission/permission.dart';
 
-import 'dim_data.dart';
+import 'dim_defs.dart';
 
 final Logger log = new Logger('DimClient');
 
@@ -13,13 +14,13 @@ class ServerInfo {
   int port;
 }
 
-typedef OnReceive = void Function(Content message);
+typedef OnReceive = void Function(ChatMessage message);
 
 abstract class IDimConnection {
   OnReceive receive;
   IDimConnection();
   Future<void> launch(ServerInfo serverInfo);
-  Future<void> send(Content content, String receverId);
+  Future<void> send(ChatMessage chatMessage);
 }
 
 class EchoDimConnection extends IDimConnection {
@@ -31,10 +32,13 @@ class EchoDimConnection extends IDimConnection {
   }
 
   @override
-  Future<void> send(Content content, String receverId) {
+  Future<void> send(ChatMessage chatMessage) {
     return Future.delayed(Duration(milliseconds: 1000), () {
       Future.delayed(Duration(milliseconds: 1000), () {
-        receive(Content(ContentType.Text, content.data));
+        receive(chatMessage.copy(
+            createTime: DateTime.now().millisecondsSinceEpoch,
+            senderId: chatMessage.receiverId,
+            receiverId: chatMessage.receiverId));
       });
     });
   }
@@ -46,24 +50,31 @@ class PlatformDimConnection extends IDimConnection {
       const EventChannel('dim_sdk_flutter/dim_client_listener');
 
   @override
-  Future<void> launch(ServerInfo serverInfo) {
+  Future<void> launch(ServerInfo serverInfo) async {
     listener.receiveBroadcastStream().listen((data) {
-      log.info("listener receive $data");
-      var content =
-          Content(intToContentType(data["contentType"]), data["data"]);
-      receive(content);
+      log.info('listener receive $data');
+      var message = ChatMessage.forSdk(
+          data['id'],
+          userIdToSessionId(data['senderId']),
+          Content(intToContentType(data['type']), data['data']),
+          data['senderId'],
+          data['receiverId'],
+          data['createTime'],
+          data['isSelf'],
+          data['isSent']);
+      receive(message);
     }, onError: (error) {
-      log.warning("listener error $error");
+      log.warning('listener error $error');
     });
-    return platform.invokeMethod("launch");
+    return platform.invokeMethod('launch');
   }
 
   @override
-  Future<void> send(Content content, String receiverId) {
-    return platform.invokeMethod("sendMessage", {
-      "type": content.type.index,
-      "data": content.data,
-      "receiverId": receiverId
+  Future<void> send(ChatMessage chatMessage) {
+    return platform.invokeMethod('sendMessage', {
+      'type': chatMessage.content.type.index,
+      'data': chatMessage.content.data,
+      'receiverId': chatMessage.receiverId
     });
   }
 }
@@ -83,9 +94,9 @@ class DispatchDimConnection {
     }
   }
 
-  _dispatch(Content content) {
+  _dispatch(ChatMessage chatMessage) {
     for (OnReceive listener in listeners) {
-      listener(content);
+      listener(chatMessage);
     }
   }
 }
@@ -102,13 +113,28 @@ class DimClient extends IDimConnection with DispatchDimConnection {
     connection.receive = _dispatch;
   }
 
+  Future<void> checkPermission() async {
+    while (true) {
+      var status =
+          (await Permission.getPermissionsStatus([PermissionName.Storage]))[0]
+              .permissionStatus;
+      if (status == PermissionStatus.notAgain) {
+        await Permission.openSettings();
+      } else if (status == PermissionStatus.allow) {
+        break;
+      } else {
+        await Permission.requestPermissions([PermissionName.Storage]);
+      }
+    }
+  }
+
   @override
   Future<void> launch(ServerInfo serverInfo) {
     return connection.launch(serverInfo);
   }
 
   @override
-  Future<void> send(Content content, String receverId) {
-    return connection.send(content, receverId);
+  Future<void> send(ChatMessage chatMessage) {
+    return connection.send(chatMessage);
   }
 }

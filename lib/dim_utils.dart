@@ -1,4 +1,4 @@
-import 'dim_data.dart';
+import 'dim_defs.dart';
 
 class DimUtils {
   static Future<LocalUserKey> createLocalUserKey() {

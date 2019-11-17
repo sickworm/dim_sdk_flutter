@@ -107,7 +107,7 @@ object DimClient: CoroutineScope, Observer {
     override fun onReceiveNotification(notification: Notification) {
         val iMsg = notification.userInfo["msg"] as InstantMessage
         launch(Dispatchers.Main) {
-            events?.success(FContent.fromIMsg(iMsg).toMap())
+            events?.success(FChatMessage.fromIMsg(iMsg).toMap())
         }
     }
 

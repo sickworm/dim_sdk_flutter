@@ -40,14 +40,31 @@ enum class FContentType {
     File
 }
 
-data class FContent(
-        val contentType: Int,
-        val data: String) {
+data class FChatMessage(
+        val id: Long,
+        val type: Int,
+        val data: String,
+        val senderId: String,
+        val receiverId: String,
+        val createTime: Long,
+        val isSelf: Boolean,
+        val isSent: Boolean) {
 
     companion object {
-        fun fromIMsg(iMsg: InstantMessage) = when(iMsg.content.type) {
-            ContentType.TEXT.value -> FContent(FContentType.Text.ordinal, iMsg.content["text"] as String)
-            else -> FContent(FContentType.Text.ordinal, iMsg.toString())
-        }
+        fun fromIMsg(iMsg: InstantMessage) = FChatMessage(
+                id = iMsg.content.serialNumber,
+                type = when(iMsg.content.type) {
+                    ContentType.TEXT.value -> FContentType.Text.ordinal
+                    else -> FContentType.Text.ordinal
+                },
+                data = when(iMsg.content.type) {
+                    ContentType.TEXT.value -> iMsg.content["text"] as String
+                    else -> iMsg.toString()
+                },
+                senderId = iMsg.envelope.sender.toString(),
+                receiverId = iMsg.envelope.receiver.toString(),
+                createTime = iMsg.envelope.time.time,
+                isSelf = false,
+                isSent = true)
     }
 }

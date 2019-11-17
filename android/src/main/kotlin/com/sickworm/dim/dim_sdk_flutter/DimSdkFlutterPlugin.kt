@@ -1,6 +1,5 @@
 package com.sickworm.dim.dim_sdk_flutter
 
-import android.util.Log
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry.Registrar
