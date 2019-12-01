@@ -26,8 +26,10 @@ class DimSdkFlutterPlugin {
 
             MethodChannel(registrar.messenger(), "dim_sdk_flutter/dim_client").setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "launch" -> DimClient.login(result)
+                    "launchServer" -> DimClient.launchServer(result)
                     "sendMessage" -> DimClient.sendMessage(call, result)
+                    "createAccount" -> DimClient.createAccount(call, result)
+                    "login" -> DimClient.login(call, result)
                     else -> result.notImplemented()
                 }
             }

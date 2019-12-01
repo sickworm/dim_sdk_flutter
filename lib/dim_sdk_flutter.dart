@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 export 'dim_client.dart';
 export 'dim_data.dart';
-export 'dim_utils.dart';
 export 'dim_defs.dart';
 
 class DimSdkFlutter {

@@ -54,7 +54,7 @@ public class Server extends Station implements TransceiverDelegate, StarDelegate
     private LocalUser currentUser = null;
     String session = null;
 
-    final StateMachine fsm;
+    public final StateMachine fsm;
 
     public Star star = null;
 
@@ -88,7 +88,7 @@ public class Server extends Station implements TransceiverDelegate, StarDelegate
         session = null;
     }
 
-    private ServerState getCurrentState() {
+    public ServerState getCurrentState() {
         return (ServerState) fsm.getCurrentState();
     }
 
@@ -98,7 +98,7 @@ public class Server extends Station implements TransceiverDelegate, StarDelegate
 
     //---- urgent command for connection
 
-    void handshake(String newSession) {
+    public void handshake(String newSession) {
         // check FSM state == 'Handshaking'
         ServerState state = getCurrentState();
         if (!StateMachine.handshakingState.equals(state.name)) {

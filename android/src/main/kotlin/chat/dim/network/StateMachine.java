@@ -31,46 +31,18 @@ import chat.dim.fsm.Transition;
 import chat.dim.stargate.StarStatus;
 import chat.dim.utils.Log;
 
-class ServerState extends State {
-
-    public final String name;
-
-    ServerState(String name) {
-        super();
-        this.name = name;
-    }
-
-    @Override
-    protected void onEnter(Machine machine) {
-        // do nothing
-        Log.info("onEnter: " + name + " state");
-    }
-
-    @Override
-    protected void onExit(Machine machine) {
-    }
-
-    @Override
-    protected void onPause(Machine machine) {
-    }
-
-    @Override
-    protected void onResume(Machine machine) {
-    }
-}
-
 /**
  *  Server state machine
  */
-class StateMachine extends Machine implements Runnable {
+public class StateMachine extends Machine implements Runnable {
 
-    static final String defaultState     = "default";
-    static final String connectingState  = "connecting";
-    static final String connectedState   = "connected";
-    static final String handshakingState = "handshaking";
-    static final String runningState     = "running";
-    static final String errorState       = "error";
-    static final String stoppedState     = "stopped";
+    public static final String defaultState     = "default";
+    public static final String connectingState  = "connecting";
+    public static final String connectedState   = "connected";
+    public static final String handshakingState = "handshaking";
+    public static final String runningState     = "running";
+    public static final String errorState       = "error";
+    public static final String stoppedState     = "stopped";
 
     StateMachine() {
         this(defaultState);
@@ -119,7 +91,7 @@ class StateMachine extends Machine implements Runnable {
     @Override
     public void run() {
         while (!isStopped()) {
-            sleep(500);
+            sleep(10);
             tick();
         }
     }

@@ -82,9 +82,6 @@ public class Client extends Terminal {
         server.star = new Fence(server);
         server.start(station);
         setCurrentServer(server);
-
-        // get user from database and login
-        login(null);
     }
 
     @SuppressWarnings("unchecked")

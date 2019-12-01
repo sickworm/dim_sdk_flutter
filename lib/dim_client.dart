@@ -21,6 +21,8 @@ abstract class IDimConnection {
   IDimConnection();
   Future<void> launch(ServerInfo serverInfo);
   Future<void> send(ChatMessage chatMessage);
+  Future<LocalUserInfo> createAccount(UserInfo userInfo);
+  Future<void> login(LocalUserInfo userInfo);
 }
 
 class EchoDimConnection extends IDimConnection {
@@ -41,6 +43,23 @@ class EchoDimConnection extends IDimConnection {
             receiverId: chatMessage.receiverId));
       });
     });
+  }
+
+  @override
+  Future<LocalUserInfo> createAccount(UserInfo userInfo) async {
+    var key = await _createLocalUserKey();
+    return LocalUserInfo(
+        userInfo.userId, userInfo.avatar, 'mock_user_id', 'userId', key);
+  }
+
+  static Future<String> _createLocalUserKey() {
+    return Future.delayed(
+        Duration(microseconds: 10), () => '{"data": "mock_local_user_key"}');
+  }
+
+  @override
+  Future<void> login(LocalUserInfo userInfo) {
+    return Future.value(null);
   }
 }
 
@@ -66,7 +85,7 @@ class PlatformDimConnection extends IDimConnection {
     }, onError: (error) {
       log.warning('listener error $error');
     });
-    return platform.invokeMethod('launch');
+    return platform.invokeMethod('launchServer');
   }
 
   @override
@@ -75,6 +94,27 @@ class PlatformDimConnection extends IDimConnection {
       'type': chatMessage.content.type.index,
       'data': chatMessage.content.data,
       'receiverId': chatMessage.receiverId
+    });
+  }
+
+  @override
+  Future<LocalUserInfo> createAccount(UserInfo userInfo) async {
+    final result = await platform.invokeMethod(
+        'createAccount', {'name': userInfo.name, 'avatar': userInfo.avatar});
+    return LocalUserInfo(result['name'], result['avatar'], result['userId'],
+        result['slogan'], result['key'],
+        extras: result['extras']);
+  }
+
+  @override
+  Future<void> login(LocalUserInfo localUserInfo) {
+    return platform.invokeMethod('login', {
+      'name': localUserInfo.name,
+      'avatar': localUserInfo.avatar,
+      'userId': localUserInfo.userId,
+      'slogan': localUserInfo.slogan,
+      'extras': localUserInfo.extras,
+      'key': localUserInfo.key
     });
   }
 }
@@ -136,5 +176,15 @@ class DimClient extends IDimConnection with DispatchDimConnection {
   @override
   Future<void> send(ChatMessage chatMessage) {
     return connection.send(chatMessage);
+  }
+
+  @override
+  Future<LocalUserInfo> createAccount(UserInfo userInfo) {
+    return connection.createAccount(userInfo);
+  }
+
+  @override
+  Future<void> login(LocalUserInfo userInfo) {
+    return connection.login(userInfo);
   }
 }

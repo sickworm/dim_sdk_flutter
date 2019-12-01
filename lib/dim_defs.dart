@@ -15,15 +15,19 @@ class UserInfo {
   final String avatar;
   final String userId;
   final String slogan;
+  final String extras;
 
-  const UserInfo(this.name, this.avatar, this.userId, this.slogan);
+  const UserInfo(this.name, this.avatar, this.userId, this.slogan,
+      {this.extras});
 }
 
-class LocalUserKey {
-  final String userId;
-  final String keyData; // json
+class LocalUserInfo extends UserInfo {
+  final String key;
 
-  const LocalUserKey(this.userId, this.keyData);
+  const LocalUserInfo(
+      String name, String avatar, String userId, String slogan, this.key,
+      {extras})
+      : super(name, avatar, userId, slogan, extras: extras);
 }
 
 enum ContentType { Text, Image, File }

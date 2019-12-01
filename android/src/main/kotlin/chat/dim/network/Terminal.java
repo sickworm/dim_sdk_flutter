@@ -56,8 +56,6 @@ public class Terminal implements StationDelegate {
 
     private Server currentServer = null;
 
-    private List<LocalUser> users = null;
-
     public Terminal() {
         super();
     }
@@ -75,7 +73,7 @@ public class Terminal implements StationDelegate {
         return "zh-CN";
     }
 
-    protected Server getCurrentServer() {
+    public Server getCurrentServer() {
         return currentServer;
     }
 
@@ -97,17 +95,15 @@ public class Terminal implements StationDelegate {
     }
 
     public List<LocalUser> allUsers() {
-        if (users == null) {
-            users = new ArrayList<>();
-            List<ID> list = facebook.database.allUsers();
-            LocalUser user;
-            for (ID item : list) {
-                user = (LocalUser) facebook.getUser(item);
-                if (user == null) {
-                    throw new NullPointerException("failed to get local user: " + item);
-                }
-                users.add(user);
+        List<LocalUser> users = new ArrayList<>();
+        List<ID> list = facebook.database.allUsers();
+        LocalUser user;
+        for (ID item : list) {
+            user = (LocalUser) facebook.getUser(item);
+            if (user == null) {
+                throw new NullPointerException("failed to get local user: " + item);
             }
+            users.add(user);
         }
         return users;
     }
@@ -130,7 +126,7 @@ public class Terminal implements StationDelegate {
         deliver.queryMeta(identifier);
     }
 
-    protected void login(LocalUser user) {
+    public void login(LocalUser user) {
         deliver.login(user);
     }
 
