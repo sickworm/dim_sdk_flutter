@@ -78,7 +78,7 @@ class PlatformDimConnection extends IDimConnection {
           Content(intToContentType(data['type']), data['data']),
           data['senderId'],
           data['receiverId'],
-          data['createTime'],
+          DateTime.now().millisecondsSinceEpoch,  // data['createTime'] 以本地时间为准
           data['isSelf'],
           data['isSent']);
       receive(message);
