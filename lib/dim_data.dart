@@ -109,7 +109,11 @@ class RamDimData extends IDimData {
 
   @override
   Future<void> addUserInfo(UserInfo userInfo) {
-    // TODO: implement addUserInfo
+    final index = _userInfos.indexWhere((u) => u.userId == userInfo.userId);
+    if (index != -1) {
+      _userInfos.removeAt(index);
+    }
+    _userInfos.add(userInfo);
     return null;
   }
 }
@@ -168,9 +172,8 @@ class PlatformDimData extends IDimData {
   @override
   Future<void> init() async {
     List listInfo = await platform.invokeMethod('getContactList');
-    _contacts = listInfo
-        .map((c) => UserInfo(c['name'], c['avatar'], c['userId'], c['slogan']))
-        .toList();
+    _contacts = List<UserInfo>.from(listInfo
+        .map((c) => UserInfo(c['name'], c['avatar'], c['userId'], c['slogan'])));
   }
 
   @override
@@ -278,6 +281,10 @@ class DbDimData extends IDimData {
           userId TEXT PRIMARY KEY NOT NULL,
           key TEXT NOT NULL)''',
       );
+
+      _db = db;
+      await addUserInfo(gsp001);
+      await addUserInfo(gsp002);
     }, version: 1);
   }
 
@@ -291,8 +298,8 @@ class DbDimData extends IDimData {
           'senderId': message.senderId,
           'receiverId': message.receiverId,
           'createTime': message.createTime,
-          'isSelf': message.isSelf,
-          'isSent': message.isSent,
+          'isSelf': message.isSelf? 1 : 0,
+          'isSent': message.isSent? 1 : 0,
           'type': message.content.type.index,
           'data': message.content.data
         },
@@ -322,18 +329,17 @@ class DbDimData extends IDimData {
   Future<List<ChatMessage>> getChatMessages(String sessionId,
       {Page page = Page.kLastPage}) async {
     final result = await _db.query('chat_message');
-    return result
+    return List<ChatMessage>.from(result
         .map((m) => ChatMessage.forSdk(
               m['id'],
               m['sessionId'],
-              Content(m['type'], m['data']),
+              Content(intToContentType(m['type']), m['data']),
               m['senderId'],
               m['receiverId'],
               m['createTime'],
-              m['isSelf'],
-              m['isSent'],
-            ))
-        .toList();
+              m['isSelf'] == 1? true : false,
+              m['isSent'] == 1? true : false,
+            )));
   }
 
   @override
@@ -344,16 +350,15 @@ class DbDimData extends IDimData {
   @override
   Future<List<ChatSession>> getChatSessionList() async {
     final result = await _db.query('chat_session');
-    return result
+    return List<ChatSession>.from(result
         .map((m) => ChatSession(
-            m['sessionId'], m['userId'], m['updateTime'], m['lastMessage']))
-        .toList();
+            m['sessionId'], m['userId'], m['updateTime'], m['lastMessage'])));
   }
 
   @override
   Future<List<String>> getContactList() async {
     final result = await _db.query('contact');
-    return result.map((m) => m['userId']).toList();
+    return List<String>.from(result.map((m) => m['userId']));
   }
 
   @override
@@ -378,7 +383,7 @@ class DbDimData extends IDimData {
       return null;
     }
     var m = result[0];
-    return UserInfo(m['name'], m['avatar'], m['userId'], m['slogna']);
+    return UserInfo(m['name'], m['avatar'], m['userId'], m['slogan']);
   }
 
   @override
@@ -418,7 +423,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<void> addChatMessage(ChatMessage message) async {
-    if (!_cacheData.messageInited[message.sessionId]) {
+    if (_cacheData.messageInited[message.sessionId] != true) {
       await getChatMessages(message.sessionId);
     }
     return Future.wait(
@@ -438,7 +443,7 @@ class DimDataManager extends IDimData {
   Future<List<ChatMessage>> getChatMessages(String sessionId,
       {Page page = Page.kLastPage}) async {
     // TODO support page
-    if (!_cacheData.messageInited[sessionId]) {
+    if (_cacheData.messageInited[sessionId] != true) {
       final messages = await _dbData.getChatMessages(sessionId);
       await Future.wait(messages.map((m) => _cacheData.addChatMessage(m)));
       _cacheData.messageInited[sessionId] = true;
@@ -468,7 +473,10 @@ class DimDataManager extends IDimData {
       await Future.wait(contacts.map((c) => _cacheData.addContact(c)));
       _cacheData.contactsInited = true;
     }
-    return _cacheData.getContactList();
+    var contactList = await _cacheData.getContactList();
+    contactList.add(gsp001.userId);
+    contactList.add(gsp002.userId);
+    return contactList;
   }
 
   @override
@@ -483,7 +491,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<UserInfo> getUserInfo(String userId) async {
-    if (!_cacheData.userInited[userId]) {
+    if (_cacheData.userInited[userId] != true) {
       final user = await _dbData.getUserInfo(userId);
       await _cacheData.addUserInfo(user);
       _cacheData.userInited[userId] = true;

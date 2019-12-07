@@ -144,7 +144,12 @@ public class Terminal implements StationDelegate {
         }
 
         // 2. verify it with sender's meta.key
-        SecureMessage sMsg = messenger.verifyMessage(rMsg);
+        SecureMessage sMsg = null;
+        try {
+            sMsg = messenger.verifyMessage(rMsg);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         if (sMsg == null) {
             // NOTICE: if meta for sender not found,
             //         the client will query it automatically

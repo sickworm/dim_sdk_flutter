@@ -7,7 +7,11 @@ class ChatSession {
   final int updateTime;
 
   const ChatSession(
-      this.userInfo, this.sessionId, this.lastMessage, this.updateTime);
+      this.userInfo, this.sessionId, this.lastMessage, this.updateTime):
+        assert(userInfo != null),
+        assert(sessionId != null),
+        assert(lastMessage != null),
+        assert(updateTime != null);
 }
 
 class UserInfo {
@@ -18,7 +22,12 @@ class UserInfo {
   final String extras;
 
   const UserInfo(this.name, this.avatar, this.userId, this.slogan,
-      {this.extras});
+      {this.extras = ""}):
+        assert(name != null),
+        assert(avatar != null),
+        assert(userId != null),
+        assert(slogan != null),
+        assert(extras != null);
 }
 
 class LocalUserInfo extends UserInfo {
@@ -26,8 +35,9 @@ class LocalUserInfo extends UserInfo {
 
   const LocalUserInfo(
       String name, String avatar, String userId, String slogan, this.key,
-      {extras})
-      : super(name, avatar, userId, slogan, extras: extras);
+      {extras}):
+        assert(key != null),
+        super(name, avatar, userId, slogan, extras: extras);
 }
 
 enum ContentType { Text, Image, File }
@@ -40,7 +50,9 @@ class Content {
   final ContentType type;
   final String data;
 
-  const Content(this.type, this.data);
+  const Content(this.type, this.data):
+        assert(type != null),
+        assert(data != null);
 
   String toString() {
     return 'Content: $type, $data';
@@ -63,16 +75,24 @@ class ChatMessage {
             createTime, isSelf, isSent);
 
   ChatMessage.forSdk(this.id, this.sessionId, this.content, this.senderId,
-      this.receiverId, this.createTime, this.isSelf, this.isSent);
+      this.receiverId, this.createTime, this.isSelf, this.isSent):
+        assert(id != null),
+        assert(sessionId != null),
+        assert(content != null),
+        assert(senderId != null),
+        assert(receiverId != null),
+        assert(createTime != null),
+        assert(isSelf != null),
+        assert(isSent != null);
 
   ChatMessage copy(
       {int createTime, String senderId, String receiverId, bool isSent}) {
     var realCreateTime = createTime == null ? this.createTime : createTime;
     var realIsSent = isSent == null ? this.isSent : isSent;
     var realSenderId = senderId == null ? this.senderId : senderId;
-    var realReceiverid = receiverId == null ? this.receiverId : receiverId;
+    var realReceiverId = receiverId == null ? this.receiverId : receiverId;
     return ChatMessage.forSdk(id, sessionId, content, realSenderId,
-        realReceiverid, realCreateTime, isSelf, realIsSent);
+        realReceiverId, realCreateTime, isSelf, realIsSent);
   }
 }
 
@@ -82,10 +102,13 @@ class Page {
   final int startIndex;
   final int size;
   final bool isTimeInc;
-  const Page(this.startIndex, this.size, {this.isTimeInc = true});
+  const Page(this.startIndex, this.size, {this.isTimeInc = true}):
+      assert(startIndex != null),
+        assert(size != null),
+        assert(isTimeInc != null);
 }
 
-var _random = Random();
+final _random = Random();
 int generateId() {
   return _random.nextInt(2 ^ 53);
 }
@@ -93,3 +116,13 @@ int generateId() {
 String userIdToSessionId(String userId) {
   return userId;
 }
+
+final gsp001 = UserInfo(
+    'gsp-s001',
+    'https://avatars3.githubusercontent.com/u/2757460?s=460&v=4',
+    'gsp-s001@x5Zh9ixt8ECr59XLye1y5WWfaX4fcoaaSC', '');
+
+final gsp002 = UserInfo(
+    'gsp-s002',
+    'https://avatars3.githubusercontent.com/u/2757460?s=460&v=4',
+    'gsp-s002@wpjUWg1oYDnkHh74tHQFPxii6q9j3ymnyW', '');

@@ -176,6 +176,7 @@ public class Facebook extends Barrack {
             Log.error("unsupported user type: " + type);
 //            throw new UnsupportedOperationException("unsupported user type: " + type);
         }
+        if (user == null) return null;
         // cache it in barrack
         cacheUser(user);
         return user;
