@@ -103,8 +103,7 @@ object DimClient: CoroutineScope, Observer {
         val callback = Callback { result, error ->
             println("DimClient: sendMessage $result $error")
             launch(Dispatchers.Main) {
-                println("DimClient: ????")
-//                channelResult.success(null)
+                channelResult.success(null)
             }
         }
         if (!messenger.sendMessage(iMsg, callback, true)) {
