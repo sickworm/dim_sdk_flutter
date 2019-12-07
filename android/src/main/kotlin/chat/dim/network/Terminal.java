@@ -136,6 +136,7 @@ public class Terminal implements StationDelegate {
     public void didReceivePackage(byte[] data, Station server) {
         // 1. decode to reliable message
         String json = new String(data, Charset.forName("UTF-8"));
+        System.out.println("didReceivePackage rMsg");
         ReliableMessage rMsg = ReliableMessage.getInstance(JSON.decode(json));
         if (rMsg == null) {
             // failed to decode reliable message
@@ -190,6 +191,7 @@ public class Terminal implements StationDelegate {
         }
         ID sender = facebook.getID(iMsg.envelope.sender);
         Content content = iMsg.content;
+        System.out.println("didReceivePackage iMsg " + JSON.encode(sender));
 
         // check meta for new group ID
         ID gid = facebook.getID(content.getGroup());

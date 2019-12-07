@@ -28,12 +28,16 @@ class MainActivity: FlutterActivity() {
     val networkConfig = NetworkConfig.getInstance()
     val messenger = Messenger.getInstance()
     client.launch(mapOf("Application" to this))
+    client.login(null)
     val user = client.currentUser
     println("???1 $client")
     println("???2 $user")
-    println("???3 ${user.contacts}")
+    println("???3 ${user?.contacts}")
 
     thread {
+      if (user == null) {
+        return@thread
+      }
       Thread.sleep(5000)
       sendText(user.contacts[0], "hello dim")
       val stationID = ID.getInstance("gsp-s001@x5Zh9ixt8ECr59XLye1y5WWfaX4fcoaaSC")

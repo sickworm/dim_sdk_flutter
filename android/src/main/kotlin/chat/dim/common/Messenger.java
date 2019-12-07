@@ -156,6 +156,7 @@ public class Messenger extends Transceiver {
      * @return NO on data/delegate error
      */
     public boolean sendMessage(InstantMessage iMsg, Callback callback, boolean split) {
+        System.out.println("sendMessage: " + JSON.encode(iMsg));
         // transforming
         ReliableMessage rMsg = encryptAndSignMessage(iMsg);
         if (rMsg == null) {

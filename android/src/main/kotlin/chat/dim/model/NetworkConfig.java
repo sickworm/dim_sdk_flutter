@@ -88,6 +88,24 @@ public class NetworkConfig extends NetworkDatabase {
             e.printStackTrace();
         }
 
+        // station2
+        ID stationID2 = ID.getInstance("gsp-s002@wpjUWg1oYDnkHh74tHQFPxii6q9j3ymnyW");
+        Map<String, Object> keyDict2 = new HashMap<>();
+        keyDict2.put("algorithm", "RSA");
+        keyDict2.put("data", "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDACQ1bmv8V3xSCvVDWy+6P4pOl\n46MkIdKEqZ3Z+kvIrpStO/y5DZMWzTRx1z1Ateibc+QCUREaLvKqECycyRNPO+aD\n04rT5WxZfSuHxf+PxajDQ1rcwImc0JR/PbkUIgD5kb2JrsSfTaEObsrhxKlgimey\nOG9bwcmSud6HzPkWZQIDAQAB\n-----END PUBLIC KEY-----");
+        Map<String, Object> metaDict2 = new HashMap<>();
+        metaDict2.put("version", 1);
+        metaDict2.put("seed", "gsp-s002");
+        metaDict2.put("key", keyDict2);
+        metaDict2.put("fingerprint", "Z1HI27oXMvY5oOpA1HaD+6d4t8/tlGty5XU+6+CIkeij5m8xS1C4vRJm3qaLTxSRsnwX6mMgkvxMAu6FfvDWe4/cisWAWt8E+aC7BrgESVanQyglWZLx0OSWDmV1jrE9Y0xAA3HlgxIoMdi3sQ4giV0NxeJHUymGenC+EsbtiUU=");
+        try {
+            Meta meta2 = Meta.getInstance(metaDict2);
+            Facebook facebook = Facebook.getInstance();
+            facebook.saveMeta(meta2, stationID2);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
         // station config
         Map<String, Object> srvConfig = new HashMap<>();
         srvConfig.put("ID", stationID);
