@@ -6,7 +6,7 @@ import 'package:permission/permission.dart';
 
 import 'dim_defs.dart';
 
-final Logger log = new Logger('DimClient');
+final Logger _log = Logger('DimClient');
 
 class ServerInfo {
   String name;
@@ -71,7 +71,7 @@ class PlatformDimConnection extends IDimConnection {
   @override
   Future<void> launch(ServerInfo serverInfo) async {
     listener.receiveBroadcastStream().listen((data) {
-      log.info('listener receive $data');
+      _log.info('listener receive $data');
       var message = ChatMessage.forSdk(
           data['id'],
           userIdToSessionId(data['senderId']),
@@ -83,7 +83,7 @@ class PlatformDimConnection extends IDimConnection {
           data['isSent']);
       receive(message);
     }, onError: (error) {
-      log.warning('listener error $error');
+      _log.warning('listener error $error');
     });
     return platform.invokeMethod('launchServer');
   }

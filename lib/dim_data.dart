@@ -2,6 +2,9 @@ import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'dim_defs.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('DimData');
 
 /// Data Interface.
 abstract class IDimData {
@@ -424,6 +427,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<void> addChatMessage(ChatMessage message) async {
+    _log.info("addChatMessage $message");
     if (_cacheData.messageInited[message.sessionId] != true) {
       await getChatMessages(message.sessionId);
     }
@@ -443,6 +447,7 @@ class DimDataManager extends IDimData {
   @override
   Future<List<ChatMessage>> getChatMessages(String sessionId,
       {Page page = Page.kLastPage}) async {
+    _log.info('getChatMessages $sessionId $page');
     // TODO support page
     if (_cacheData.messageInited[sessionId] != true) {
       final messages = await _dbData.getChatMessages(sessionId);
@@ -454,11 +459,13 @@ class DimDataManager extends IDimData {
 
   @override
   Future<String> getChatSessionId(String userId) {
+    _log.info('getChatSessionId $userId');
     return _dbData.getChatSessionId(userId);
   }
 
   @override
   Future<List<ChatSession>> getChatSessionList() async {
+    _log.info('getChatSessionList');
     if (!_cacheData.sessionInited) {
       final sessions = await _dbData.getChatSessionList();
       await Future.wait(sessions.map((s) => _cacheData.addSession(s)));
@@ -469,6 +476,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<List<String>> getContactList() async {
+    _log.info('getContactList');
     if (!_cacheData.contactsInited) {
       final contacts = await _dbData.getContactList();
       await Future.wait(contacts.map((c) => _cacheData.addContact(c)));
@@ -482,6 +490,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<LocalUserInfo> getLocalUserInfo() async {
+    _log.info('getLocalUserInfo');
     if (!_cacheData.localUserInited) {
       final localUser = await _dbData.getLocalUserInfo();
       await _cacheData.setLocalUserInfo(localUser);
@@ -492,6 +501,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<UserInfo> getUserInfo(String userId) async {
+    _log.info('getUserInfo $userId');
     if (_cacheData.userInited[userId] != true) {
       final user = await _dbData.getUserInfo(userId);
       await _cacheData.addUserInfo(user);
@@ -502,6 +512,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<void> init() {
+    _log.info('init');
     final a = _dbData.init();
     final b = _cacheData.init();
     return Future.wait([a, b]);
@@ -509,6 +520,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<void> addSession(ChatSession chatSession) async {
+    _log.info('addSession $chatSession');
     if (!_cacheData.sessionInited) {
       final sessions = await _dbData.getChatSessionList();
       await Future.wait(sessions.map((s) => _cacheData.addSession(s)));
@@ -519,6 +531,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<void> setLocalUserInfo(LocalUserInfo userInfo) async {
+    _log.info('setLocalUserInfo $userInfo');
     return Future.wait([
       _dbData.setLocalUserInfo(userInfo),
       _cacheData.setLocalUserInfo(userInfo),
@@ -528,6 +541,7 @@ class DimDataManager extends IDimData {
 
   @override
   Future<void> addUserInfo(UserInfo userInfo) {
+    _log.info('addUserInfo $userInfo');
     return Future.wait([
       _dbData.addUserInfo(userInfo),
       _cacheData.addUserInfo(userInfo),
