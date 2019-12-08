@@ -328,7 +328,8 @@ class DbDimData extends IDimData {
   @override
   Future<List<ChatMessage>> getChatMessages(String sessionId,
       {Page page = Page.kLastPage}) async {
-    final result = await _db.query('chat_message');
+    final result = await _db.query('chat_message',
+        orderBy: 'createTime ASC');
     return List<ChatMessage>.from(result
         .map((m) => ChatMessage.forSdk(
               m['id'],
