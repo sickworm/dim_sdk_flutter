@@ -1,20 +1,20 @@
 import 'dart:math';
 
 class ChatSession {
-  final UserInfo userInfo;
+  final String userId;
   final String sessionId;
   final String lastMessage;
   final int updateTime;
 
   const ChatSession(
-      this.userInfo, this.sessionId, this.lastMessage, this.updateTime):
-        assert(userInfo != null),
+      this.userId, this.sessionId, this.lastMessage, this.updateTime):
+        assert(userId != null),
         assert(sessionId != null),
         assert(lastMessage != null),
         assert(updateTime != null);
 
   String toString() {
-    return '{ChatSession: $userInfo, $sessionId, $lastMessage, $updateTime}';
+    return '{ChatSession: $userId, $sessionId, $lastMessage, $updateTime}';
   }
 }
 

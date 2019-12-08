@@ -87,11 +87,14 @@ class RamDimData extends IDimData {
   @override
   Future<void> addSession(ChatSession chatSession) async {
     ChatSession oldSession =
-        _chatSessions.firstWhere((s) => s.sessionId == chatSession.sessionId);
+        _chatSessions.firstWhere((s) => s.sessionId == chatSession.sessionId,
+            orElse: () => null);
     if (oldSession != null) {
       _chatSessions.remove(oldSession);
     }
     _chatSessions.add(chatSession);
+    // DESC
+    _chatSessions.sort((c1, c2) => c2.updateTime - c1.updateTime);
     return null;
   }
 
@@ -106,6 +109,7 @@ class RamDimData extends IDimData {
         messages[oldMessageIndex] = message;
       } else {
         messages.add(message);
+        messages.insert(index, element);
       }
     }
   }
@@ -149,7 +153,7 @@ class MockDimData extends RamDimData {
     _userInfos = [kMocklocalUser, kMocklocalUser2];
     _contacts = [kMocklocalUser.userId, kMocklocalUser2.userId];
     _chatSessions = [
-      ChatSession(kMocklocalUser2, userIdToSessionId(kMocklocalUser2.userId),
+      ChatSession(kMocklocalUser2.userId, userIdToSessionId(kMocklocalUser2.userId),
           'hi this is the last chat message', 0)
     ];
     _chatMessages = {
@@ -274,7 +278,7 @@ class DbDimData extends IDimData {
       );
       await db.execute(
         '''CREATE TABLE chat_session(
-          sessionId INTEGER PRIMARY KEY NOT NULL,
+          sessionId TEXT PRIMARY KEY NOT NULL,
           userId TEXT NOT NULL,
           lastMessage TEXT NOT NULL,
           updateTime INTEGER NOT NULL)''',
@@ -353,10 +357,11 @@ class DbDimData extends IDimData {
 
   @override
   Future<List<ChatSession>> getChatSessionList() async {
-    final result = await _db.query('chat_session');
+    final result = await _db.query('chat_session',
+        orderBy: 'updateTime DESC');
     return List<ChatSession>.from(result
         .map((m) => ChatSession(
-            m['sessionId'], m['userId'], m['updateTime'], m['lastMessage'])));
+            m['sessionId'], m['userId'], m['lastMessage'], m['updateTime'])));
   }
 
   @override
@@ -396,9 +401,9 @@ class DbDimData extends IDimData {
         'chat_session',
         {
           'sessionId': chatSession.sessionId,
-          'userId': chatSession.userInfo.userId,
-          'updateTime': chatSession.updateTime,
-          'lastMessage': chatSession.lastMessage
+          'userId': chatSession.userId,
+          'lastMessage': chatSession.lastMessage,
+          'updateTime': chatSession.updateTime
         },
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
@@ -522,11 +527,10 @@ class DimDataManager extends IDimData {
   Future<void> addSession(ChatSession chatSession) async {
     _log.info('addSession $chatSession');
     if (!_cacheData.sessionInited) {
-      final sessions = await _dbData.getChatSessionList();
-      await Future.wait(sessions.map((s) => _cacheData.addSession(s)));
-      _cacheData.sessionInited = true;
+      await getChatSessionList();
     }
-    return _cacheData.getChatSessionList();
+    return Future.wait([_dbData.addSession(chatSession),
+      _cacheData.addSession(chatSession)]);
   }
 
   @override
