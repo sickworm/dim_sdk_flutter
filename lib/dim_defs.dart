@@ -12,6 +12,10 @@ class ChatSession {
         assert(sessionId != null),
         assert(lastMessage != null),
         assert(updateTime != null);
+
+  String toString() {
+    return '{ChatSession: $userInfo, $sessionId, $lastMessage, $updateTime}';
+  }
 }
 
 class UserInfo {
@@ -28,6 +32,10 @@ class UserInfo {
         assert(userId != null),
         assert(slogan != null),
         assert(extras != null);
+
+  String toString() {
+    return '{UserInfo: $name, $userId}';
+  }
 }
 
 class LocalUserInfo extends UserInfo {
@@ -38,6 +46,10 @@ class LocalUserInfo extends UserInfo {
       {extras}):
         assert(key != null),
         super(name, avatar, userId, slogan, extras: extras);
+
+  String toString() {
+    return '{LocalUserInfo: $name, $userId}';
+  }
 }
 
 enum ContentType { Text, Image, File }
@@ -55,7 +67,7 @@ class Content {
         assert(data != null);
 
   String toString() {
-    return 'Content: $type, $data';
+    return '{Content: $type, $data}';
   }
 }
 
@@ -94,6 +106,11 @@ class ChatMessage {
     return ChatMessage.forSdk(id, sessionId, content, realSenderId,
         realReceiverId, realCreateTime, isSelf, realIsSent);
   }
+
+  String toString() {
+    return '{ChatMessage: $id, $sessionId, $content, $senderId, $receiverId, '
+        '$createTime, $isSelf, $isSent}';
+  }
 }
 
 class Page {
@@ -106,6 +123,10 @@ class Page {
       assert(startIndex != null),
         assert(size != null),
         assert(isTimeInc != null);
+
+  String toString() {
+    return '{Page: $startIndex, $size, $isTimeInc}';
+  }
 }
 
 final _random = Random();
